@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <!-- Main Landing Page -->
+    <url>
+        <loc>https://radhaindustries.com/index.html</loc>
+        <lastmod>2026-05-27</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>1.00</priority>
+    </url>
+    <!-- Gland Packing Detail Page -->
+    <url>
+        <loc>https://radhaindustries.com/gland-packing.html</loc>
+        <lastmod>2026-05-27</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.80</priority>
+    </url>
+    <!-- Water Solutions Detail Page -->
+    <url>
+        <loc>https://radhaindustries.com/water-solutions.html</loc>
+        <lastmod>2026-05-27</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.80</priority>
+    </url>
+    <!-- Mechanical Seals Detail Page -->
+    <url>
+        <loc>https://radhaindustries.com/mechanical-seals.html</loc>
+        <lastmod>2026-05-27</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.80</priority>
+    </url>
+    <!-- SS Filter Housing Detail Page -->
+    <url>
+        <loc>https://radhaindustries.com/ss-filter-housing.html</loc>
+        <lastmod>2026-05-27</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.80</priority>
+    </url>
+</urlset>

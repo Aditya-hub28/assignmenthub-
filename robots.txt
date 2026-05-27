@@ -1,0 +1,10 @@
+# ═══════════════════════════════════════════
+# ROBOTS.TXT — Search Engine Crawling Rules
+# Radha Industries Portfolio
+# ═══════════════════════════════════════════
+
+User-agent: *
+Allow: /
+
+# Sitemaps list
+Sitemap: https://radhaindustries.com/sitemap.xml
