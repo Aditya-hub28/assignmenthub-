@@ -1,37 +1,36 @@
-# Radha Industries
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-A static business website for Radha Industries, showcasing industrial water solutions, gland packing products, mechanical seals, stainless steel filter housings, and related engineering services.
+## Getting Started
 
-## Project Structure
+First, run the development server:
 
-- `index.html` — Main landing page
-- `gland-packing.html` — Gland packing product page
-- `mechanical-seals.html` — Mechanical seals product page
-- `ss-filter-housing.html` — Stainless steel filter housing page
-- `water-solutions.html` — Water solutions page
-- `css/` — Stylesheets for layout, components, animations, and sections
-- `js/` — JavaScript for navigation, animations, cursor effects, and interactivity
-- `robots.txt` — Search engine crawler rules
-- `sitemap.xml` — Sitemap for SEO
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
 
-## Features
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-- Responsive HTML/CSS website
-- SEO-friendly metadata and structured JSON-LD schema
-- Smooth navigation and page animations
-- Mobile-friendly layout and accessible navigation
+You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
 
-## Usage
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-1. Open `index.html` in a browser to preview the site.
-2. Deploy the folder to any static hosting service such as GitHub Pages, Netlify, or Vercel.
+## Learn More
 
-## Deployment
+To learn more about Next.js, take a look at the following resources:
 
-- For GitHub Pages, enable Pages in the repository settings and publish from the `main` branch.
-- For Netlify or Vercel, connect the repository and deploy the root folder as a static site.
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-## Notes
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-- This repository contains the full front-end website source.
-- No build tools are required; it is ready to serve as static HTML/CSS/JS.
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
