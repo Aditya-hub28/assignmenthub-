@@ -118,6 +118,7 @@ export default function Home() {
 
   // User Session State
   const [user, setUser] = useState(null);
+  const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [signupModalOpen, setSignupModalOpen] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
@@ -211,7 +212,26 @@ export default function Home() {
 
           if (localBook) setBookmarks(JSON.parse(localBook));
           if (localDown) setDownloads(JSON.parse(localDown));
-          if (localUser) setUser(JSON.parse(localUser));
+          if (localUser) {
+            setUser(JSON.parse(localUser));
+          } else {
+            const defaultUser = {
+              name: 'Anjali Mishra',
+              email: 'anjali@gmail.com',
+              role: 'writer',
+              coins: 2450,
+              level: 18,
+              orders: 56,
+              rating: 4.9,
+              streak: 15,
+              rank: 18,
+              completed: 124,
+              delivered: 98,
+              onTime: 97
+            };
+            setUser(defaultUser);
+            localStorage.setItem('tsec_user', JSON.stringify(defaultUser));
+          }
           
           setTheme(localTheme);
           if (localTheme === 'dark') {
@@ -272,9 +292,23 @@ export default function Home() {
   const handleLogin = (e) => {
     e.preventDefault();
     if (!loginEmail || !loginPass) return;
+    const isWriter = loginEmail.includes('writer') || loginEmail === 'anjali@gmail.com';
     const name = loginEmail.split('@')[0];
-    const role = loginEmail === 'admin@tsec.edu' || loginEmail.includes('admin') ? 'admin' : 'student';
-    const newUser = { name: name.toUpperCase(), email: loginEmail, role };
+    const role = isWriter ? 'writer' : 'client';
+    const newUser = {
+      name: isWriter ? 'Anjali Mishra' : (name.toLowerCase() === 'rahul' ? 'Rahul Sharma' : name.toUpperCase()),
+      email: loginEmail,
+      role: role,
+      coins: isWriter ? 2450 : 120,
+      level: isWriter ? 18 : 3,
+      orders: isWriter ? 56 : 5,
+      rating: isWriter ? 4.9 : 4.5,
+      streak: isWriter ? 15 : 4,
+      rank: isWriter ? 18 : 142,
+      completed: isWriter ? 124 : 8,
+      delivered: isWriter ? 98 : 0,
+      onTime: isWriter ? 97 : 100
+    };
     setUser(newUser);
     localStorage.setItem('tsec_user', JSON.stringify(newUser));
     setLoginEmail('');
@@ -286,7 +320,22 @@ export default function Home() {
   const handleSignup = (e) => {
     e.preventDefault();
     if (!signupName || !signupEmail) return;
-    const newUser = { name: signupName.toUpperCase(), email: signupEmail, role: 'student' };
+    const isWriter = signupEmail.includes('writer') || signupEmail === 'anjali@gmail.com';
+    const role = isWriter ? 'writer' : 'client';
+    const newUser = {
+      name: signupName.toUpperCase(),
+      email: signupEmail,
+      role: role,
+      coins: role === 'writer' ? 2450 : 120,
+      level: role === 'writer' ? 18 : 1,
+      orders: role === 'writer' ? 56 : 0,
+      rating: role === 'writer' ? 4.9 : 5.0,
+      streak: role === 'writer' ? 15 : 1,
+      rank: role === 'writer' ? 18 : 500,
+      completed: role === 'writer' ? 124 : 0,
+      delivered: role === 'writer' ? 98 : 0,
+      onTime: role === 'writer' ? 97 : 100
+    };
     setUser(newUser);
     localStorage.setItem('tsec_user', JSON.stringify(newUser));
     setSignupName('');
@@ -835,28 +884,217 @@ int main() {
 
             {/* Auth / Dashboard standing */}
             {user ? (
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setActiveTab('dashboard')} 
-                  className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer shadow-sm hover:-translate-y-0.5"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                  {user.name}
-                </button>
-                {user.role === 'admin' && (
+              <div className="flex items-center gap-3 relative">
+                
+                {/* Coins indicator */}
+                <div className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-secondary)] text-[10px] font-bold text-[var(--text-secondary)] select-none shadow-sm">
+                  <span>🪙</span>
+                  <span className="text-[var(--text-primary)] font-black">{(user.coins !== undefined ? user.coins : 120).toLocaleString()}</span>
+                  <span>Coins</span>
+                </div>
+
+                {/* Streak indicator */}
+                <div className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-secondary)] text-[10px] font-bold text-[var(--text-secondary)] select-none shadow-sm">
+                  <span>🔥</span>
+                  <span className="text-amber-500 font-black">{user.streak || '15'}</span>
+                  <span>Streak</span>
+                </div>
+
+                {/* Avatar Button */}
+                <div className="relative">
                   <button 
-                    onClick={() => setActiveTab('admin')} 
-                    className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-indigo-500/20 bg-indigo-500/5 text-indigo-500 text-[10px] font-bold hover:bg-indigo-500/10 transition-all cursor-pointer hover:-translate-y-0.5"
+                    onClick={() => setAvatarDropdownOpen(!avatarDropdownOpen)}
+                    className="w-8 h-8 rounded-full border border-[var(--border-color)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] flex items-center justify-center text-sm font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 select-none"
+                    aria-label="User profile dropdown"
                   >
-                    <Lock size={9}/> Admin
+                    👤
                   </button>
-                )}
-                <button 
-                  onClick={handleLogout} 
-                  className="px-4 py-2 rounded-full border border-rose-500/20 text-rose-500 text-[10px] font-bold hover:bg-rose-500/5 transition-all cursor-pointer shadow-sm active:scale-95"
-                >
-                  Logout
-                </button>
+
+                  {/* Dropdown panel */}
+                  {avatarDropdownOpen && (
+                    <>
+                      {/* Invisible backdrop for outside click handler */}
+                      <div className="fixed inset-0 z-40 cursor-default" onClick={() => setAvatarDropdownOpen(false)}></div>
+                      
+                      {/* Panel */}
+                      <div className="absolute right-0 mt-3.5 w-64 rounded-2xl border border-[var(--border-color)] bg-white dark:bg-slate-950 p-4 shadow-xl z-50 animate-scale-in text-left text-xs font-medium text-[var(--text-secondary)]">
+                        {user.role === 'writer' ? (
+                          // WRITER DROPDOWN (Anjali Mishra)
+                          <div className="flex flex-col gap-3">
+                            <div 
+                              onClick={() => { setActiveTab('profile'); setAvatarDropdownOpen(false); }}
+                              className="flex items-center gap-3 cursor-pointer p-1.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-all"
+                            >
+                              <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900 border border-[var(--border-color)] flex items-center justify-center text-slate-500 shadow-inner shrink-0 text-base select-none">
+                                👤
+                              </div>
+                              <div className="overflow-hidden">
+                                <h4 className="font-extrabold text-xs text-[var(--text-primary)] truncate leading-tight">{user.name}</h4>
+                                <span className="text-[10px] text-[var(--text-muted)] block truncate font-mono mt-0.5">@{user.name.toLowerCase().replace(/\s+/g, '_')}</span>
+                                <span className="inline-block text-[9px] font-bold text-amber-500 bg-amber-500/5 px-2 py-0.5 rounded-full border border-amber-500/10 mt-1 font-heading">
+                                  Gold Writer ⭐
+                                </span>
+                              </div>
+                            </div>
+
+                            <hr className="border-[var(--border-color)]" />
+
+                            {/* Writer Stats */}
+                            <div className="grid grid-cols-2 gap-2 text-[10px] font-bold py-1 bg-[var(--bg-secondary)]/30 rounded-xl p-2.5 border border-[var(--border-color)]/50">
+                              <div className="flex items-center gap-1.5">
+                                <span>🪙</span>
+                                <span className="text-[var(--text-muted)] font-medium">Coins:</span>
+                                <span className="text-[var(--text-primary)] ml-auto">{(user.coins !== undefined ? user.coins : 2450).toLocaleString()}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span>📈</span>
+                                <span className="text-[var(--text-muted)] font-medium">Level:</span>
+                                <span className="text-[var(--text-primary)] ml-auto">{user.level || 18}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span>📝</span>
+                                <span className="text-[var(--text-muted)] font-medium">Orders:</span>
+                                <span className="text-[var(--text-primary)] ml-auto">{user.orders || 56}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span>⭐</span>
+                                <span className="text-[var(--text-muted)] font-medium">Rating:</span>
+                                <span className="text-[var(--text-primary)] ml-auto">{user.rating || 4.9}</span>
+                              </div>
+                            </div>
+
+                            <hr className="border-[var(--border-color)]" />
+
+                            {/* Writer Links */}
+                            <div className="flex flex-col gap-1 font-bold">
+                              <button 
+                                onClick={() => { setActiveTab('profile'); setAvatarDropdownOpen(false); }}
+                                className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
+                              >
+                                <span className="flex items-center gap-2">👤 My Profile</span>
+                                <span className="text-[var(--text-muted)] text-[10px]">→</span>
+                              </button>
+                              <button 
+                                onClick={() => { setActiveTab('dashboard'); setAvatarDropdownOpen(false); }}
+                                className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
+                              >
+                                <span className="flex items-center gap-2">📚 My Assignments</span>
+                                <span className="text-[var(--text-muted)] text-[10px]">→</span>
+                              </button>
+                              <button 
+                                onClick={() => { setActiveTab('pricing'); setAvatarDropdownOpen(false); }}
+                                className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
+                              >
+                                <span className="flex items-center gap-2">💰 Wallet</span>
+                                <span className="text-[var(--text-muted)] text-[10px]">→</span>
+                              </button>
+                              <button 
+                                onClick={() => { setActiveTab('leaderboard'); setAvatarDropdownOpen(false); }}
+                                className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
+                              >
+                                <span className="flex items-center gap-2">🏆 Achievements</span>
+                                <span className="text-[var(--text-muted)] text-[10px]">→</span>
+                              </button>
+                              <button 
+                                onClick={() => { pushNotification("Info", "Settings panel is currently locked."); setAvatarDropdownOpen(false); }}
+                                className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
+                              >
+                                <span className="flex items-center gap-2">⚙️ Settings</span>
+                                <span className="text-[var(--text-muted)] text-[10px]">→</span>
+                              </button>
+                              
+                              <hr className="border-[var(--border-color)] my-1" />
+                              
+                              <button 
+                                onClick={() => { handleLogout(); setAvatarDropdownOpen(false); }}
+                                className="w-full flex items-center gap-2 px-2 py-1.5 text-rose-500 hover:bg-rose-500/5 hover:text-rose-600 rounded-lg cursor-pointer text-left font-sans text-xs font-black"
+                              >
+                                🚪 Logout
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          // CLIENT DROPDOWN (Rahul Sharma / Student)
+                          <div className="flex flex-col gap-3">
+                            <div 
+                              onClick={() => { setActiveTab('profile'); setAvatarDropdownOpen(false); }}
+                              className="flex items-center gap-3 cursor-pointer p-1.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-all"
+                            >
+                              <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900 border border-[var(--border-color)] flex items-center justify-center text-slate-500 shadow-inner shrink-0 text-base select-none">
+                                👤
+                              </div>
+                              <div className="overflow-hidden">
+                                <h4 className="font-extrabold text-xs text-[var(--text-primary)] truncate leading-tight">{user.name}</h4>
+                                <span className="text-[10px] text-[var(--text-muted)] block truncate font-mono mt-0.5">@{user.name.toLowerCase().replace(/\s+/g, '_')}</span>
+                                <span className="inline-block text-[9px] font-bold text-sky-500 bg-sky-500/5 px-2 py-0.5 rounded-full border border-sky-500/10 mt-1 font-heading">
+                                  Client
+                                </span>
+                              </div>
+                            </div>
+
+                            <hr className="border-[var(--border-color)]" />
+
+                            {/* Client Links */}
+                            <div className="flex flex-col gap-1 font-bold">
+                              <button 
+                                onClick={() => { setActiveTab('profile'); setAvatarDropdownOpen(false); }}
+                                className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
+                              >
+                                <span className="flex items-center gap-2">👤 My Profile</span>
+                                <span className="text-[var(--text-muted)] text-[10px]">→</span>
+                              </button>
+                              <button 
+                                onClick={() => { setActiveTab('dashboard'); setAvatarDropdownOpen(false); }}
+                                className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
+                              >
+                                <span className="flex items-center gap-2">📄 My Orders</span>
+                                <span className="text-[var(--text-muted)] text-[10px]">→</span>
+                              </button>
+                              <button 
+                                onClick={() => { pushNotification("Chat", "No new messages in inbox."); setAvatarDropdownOpen(false); }}
+                                className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
+                              >
+                                <span className="flex items-center gap-2">💬 Messages</span>
+                                <span className="text-[var(--text-muted)] text-[10px]">→</span>
+                              </button>
+                              <button 
+                                onClick={() => { pushNotification("Wishlist", "Wishlist is currently empty."); setAvatarDropdownOpen(false); }}
+                                className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
+                              >
+                                <span className="flex items-center gap-2">❤️ Wishlist</span>
+                                <span className="text-[var(--text-muted)] text-[10px]">→</span>
+                              </button>
+                              <button 
+                                onClick={() => { setActiveTab('pricing'); setAvatarDropdownOpen(false); }}
+                                className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
+                              >
+                                <span className="flex items-center gap-2">🪙 Wallet</span>
+                                <span className="text-[var(--text-muted)] text-[10px]">→</span>
+                              </button>
+                              <button 
+                                onClick={() => { pushNotification("Info", "Settings panel is currently locked."); setAvatarDropdownOpen(false); }}
+                                className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
+                              >
+                                <span className="flex items-center gap-2">⚙️ Settings</span>
+                                <span className="text-[var(--text-muted)] text-[10px]">→</span>
+                              </button>
+                              
+                              <hr className="border-[var(--border-color)] my-1" />
+                              
+                              <button 
+                                onClick={() => { handleLogout(); setAvatarDropdownOpen(false); }}
+                                className="w-full flex items-center gap-2 px-2 py-1.5 text-rose-500 hover:bg-rose-500/5 hover:text-rose-600 rounded-lg cursor-pointer text-left font-sans text-xs font-black"
+                              >
+                                🚪 Logout
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -2751,6 +2989,287 @@ int main() {
                   ))
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'profile' && (
+          <div className="animate-fade-in py-6 max-w-7xl mx-auto px-4 sm:px-6 w-full flex flex-col gap-6 text-left">
+            <div className="border-b border-[var(--border-color)] pb-3">
+              <h1 className="text-2xl font-black font-heading tracking-tight text-[var(--text-primary)]">User Profile</h1>
+              <p className="text-xs text-[var(--text-secondary)] mt-1">LeetCode statistics and activity summary for your account.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              
+              {/* LEFT COLUMN: Profile Details & Community Stats */}
+              <div className="lg:col-span-3 flex flex-col gap-4">
+                
+                {/* Profile Card */}
+                <div className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    {/* LeetCode style user avatar placeholder */}
+                    <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-900 border border-[var(--border-color)] flex items-center justify-center text-slate-400 shadow-inner">
+                      <User size={38} />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-sm text-[var(--text-primary)] leading-tight">
+                        {user ? user.name : 'ANJALI'}
+                      </h3>
+                      <p className="text-[11px] text-[var(--text-muted)] mt-1 font-mono font-medium">
+                        @{user ? user.name.toLowerCase() : 'anjali'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-[10px] font-bold text-[var(--text-secondary)] border-y border-[var(--border-color)] py-2.5 my-1">
+                    <span className="text-[11px] font-mono">Rank: <span className="text-[var(--text-primary)]">1,547,056</span></span>
+                    <span className="text-[10px] text-[var(--text-muted)] bg-[var(--bg-secondary)] px-2 py-0.5 rounded">Active</span>
+                  </div>
+
+                  <div className="flex justify-around text-center text-xs font-semibold text-[var(--text-secondary)] my-0.5">
+                    <div>
+                      <div className="text-sm font-black text-[var(--text-primary)]">2</div>
+                      <div className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">Following</div>
+                    </div>
+                    <div className="w-[1px] h-6 bg-[var(--border-color)]"></div>
+                    <div>
+                      <div className="text-sm font-black text-[var(--text-primary)]">2</div>
+                      <div className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">Followers</div>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="button"
+                    onClick={() => pushNotification("Feature Info", "Profile editing is currently locked.")}
+                    className="w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-[10.5px] rounded-xl border border-emerald-500/15 transition-all cursor-pointer text-center font-heading"
+                  >
+                    Edit Profile
+                  </button>
+
+                  <div className="flex flex-col gap-2.5 text-[11px] text-[var(--text-secondary)] font-medium pt-2 border-t border-[var(--border-color)]">
+                    <div className="flex items-center gap-2">
+                      <span>📍</span>
+                      <span>India</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-rose-500 hover:text-rose-600 cursor-pointer w-max" onClick={handleLogout}>
+                      <span>🚪</span>
+                      <span className="font-bold">Logout</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Community Stats Card */}
+                <div className="p-5 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-3 shadow-sm">
+                  <h4 className="font-bold text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Community Stats</h4>
+                  <div className="flex flex-col gap-2.5 text-[11px] font-semibold text-[var(--text-secondary)]">
+                    <div className="flex justify-between items-center">
+                      <span className="flex items-center gap-2">👀 Views</span>
+                      <span className="text-[var(--text-primary)] font-bold">0 <span className="text-[9px] text-[var(--text-muted)] font-normal ml-1">last week 0</span></span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="flex items-center gap-2">✔️ Solution</span>
+                      <span className="text-[var(--text-primary)] font-bold">0 <span className="text-[9px] text-[var(--text-muted)] font-normal ml-1">last week 0</span></span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="flex items-center gap-2">💬 Discuss</span>
+                      <span className="text-[var(--text-primary)] font-bold">0 <span className="text-[9px] text-[var(--text-muted)] font-normal ml-1">last week 0</span></span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="flex items-center gap-2">⭐ Reputation</span>
+                      <span className="text-[var(--text-primary)] font-bold">0 <span className="text-[9px] text-[var(--text-muted)] font-normal ml-1">last week 0</span></span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* RIGHT COLUMN: LeetCode solve summary, badge status, heatmap, submissions */}
+              <div className="lg:col-span-9 flex flex-col gap-5">
+                
+                {/* Row 1 Grid: Solve Count & Badges */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-5">
+                  
+                  {/* Solve Count Card */}
+                  <div className="sm:col-span-7 p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex items-center justify-between gap-6 shadow-sm">
+                    
+                    {/* SVG Circular Donut Chart */}
+                    <div className="relative w-28 h-28 shrink-0 flex items-center justify-center">
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                        {/* Base Circle */}
+                        <circle cx="18" cy="18" r="15.915" fill="none" stroke="var(--border-color)" strokeWidth="2.5"></circle>
+                        {/* Easy Circle (Green) */}
+                        <circle cx="18" cy="18" r="15.915" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeDasharray="2.5 97.5" strokeDashoffset="100"></circle>
+                        {/* Med Circle (Yellow) */}
+                        <circle cx="18" cy="18" r="15.915" fill="none" stroke="#eab308" strokeWidth="2.5" strokeDasharray="0.5 99.5" strokeDashoffset="97.5"></circle>
+                      </svg>
+                      <div className="absolute flex flex-col items-center justify-center text-center">
+                        <span className="text-lg font-black text-[var(--text-primary)] leading-tight">103</span>
+                        <span className="text-[8.5px] text-[var(--text-muted)] font-bold uppercase tracking-wider">/ 3985</span>
+                        <span className="text-[9px] text-emerald-500 font-bold mt-0.5">Solved</span>
+                      </div>
+                    </div>
+
+                    {/* Breakdown Bars */}
+                    <div className="flex-grow flex flex-col gap-3 text-left">
+                      {/* Easy */}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex justify-between text-[10.5px] font-bold">
+                          <span className="text-emerald-500">Easy</span>
+                          <span className="text-[var(--text-primary)]">98 <span className="text-[9.5px] text-[var(--text-muted)] font-medium">/ 953</span></span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden">
+                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: '10%' }}></div>
+                        </div>
+                      </div>
+                      {/* Medium */}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex justify-between text-[10.5px] font-bold">
+                          <span className="text-amber-500">Medium</span>
+                          <span className="text-[var(--text-primary)]">5 <span className="text-[9.5px] text(--text-muted) font-medium">/ 2081</span></span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden">
+                          <div className="h-full bg-amber-500 rounded-full" style={{ width: '0.2%' }}></div>
+                        </div>
+                      </div>
+                      {/* Hard */}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex justify-between text-[10.5px] font-bold">
+                          <span className="text-red-500">Hard</span>
+                          <span className="text-[var(--text-primary)]">0 <span className="text-[9.5px] text-[var(--text-muted)] font-medium">/ 951</span></span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden">
+                          <div className="h-full bg-red-500 rounded-full" style={{ width: '0%' }}></div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Badges Card */}
+                  <div className="sm:col-span-5 p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-3 shadow-sm text-left">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Badges</span>
+                      <span className="text-xs font-black text-[var(--text-primary)]">1</span>
+                    </div>
+
+                    <div className="flex items-center gap-4 mt-2">
+                      {/* Shield Graphic Badge */}
+                      <div className="w-14 h-14 bg-emerald-500/10 rounded-xl border border-emerald-500/25 flex items-center justify-center text-3xl shadow-sm relative group cursor-pointer hover:scale-105 transition-all">
+                        🛡️
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-yellow-500 text-white font-extrabold text-[8px] rounded-full flex items-center justify-center border-2 border-white dark:border-slate-950">
+                          50
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-xs text-[var(--text-primary)] leading-tight">50 Days Badge 2026</h4>
+                        <p className="text-[9.5px] text-[var(--text-muted)] font-semibold mt-1">Most Recent Badge</p>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Row 2: Heatmap Calendar */}
+                <div className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm text-left">
+                  <div className="flex justify-between items-center flex-wrap gap-2">
+                    <h4 className="font-bold text-xs text-[var(--text-primary)]">161 submissions in the past one year</h4>
+                    <div className="flex gap-4 text-[10.5px] font-semibold text-[var(--text-secondary)] font-mono">
+                      <span>Total active days: <span className="text-emerald-500 font-bold">53</span></span>
+                      <span>•</span>
+                      <span>Max streak: <span className="text-emerald-500 font-bold">34</span></span>
+                    </div>
+                  </div>
+
+                  {/* LeetCode Heatmap Grid Grid */}
+                  <div className="overflow-x-auto w-full pb-2">
+                    <div className="flex gap-1.5 min-w-[650px] justify-between text-[8px] font-mono text-[var(--text-muted)] font-bold mb-1 px-1">
+                      {["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"].map(m => (
+                        <span key={m} className="w-[38px] text-center">{m}</span>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-flow-col grid-rows-7 gap-[3.5px] min-w-[650px]">
+                      {(() => {
+                        const cells = [];
+                        // Generate 365 squares
+                        for (let i = 0; i < 365; i++) {
+                          let opacityClass = "bg-slate-100 dark:bg-slate-900 border border-slate-200/20"; // 0 submissions
+                          
+                          // Simulate clusters of activity in April-July (indices 260-365)
+                          if (i >= 260) {
+                            const rand = Math.random();
+                            if (rand > 0.75) {
+                              opacityClass = "bg-emerald-500/40 border border-emerald-500/10"; // light green
+                            } else if (rand > 0.5) {
+                              opacityClass = "bg-emerald-500/70 border border-emerald-500/20"; // medium green
+                            } else if (rand > 0.35) {
+                              opacityClass = "bg-emerald-500 border border-emerald-500/30"; // deep green
+                            }
+                          } else if (i % 23 === 0) {
+                            opacityClass = "bg-emerald-500/20"; // light accent
+                          }
+
+                          cells.push(
+                            <div 
+                              key={i} 
+                              className={`w-2.5 h-2.5 rounded-sm transition-colors duration-300 ${opacityClass}`}
+                              title={`Day ${i}: Activity level calculated`}
+                            ></div>
+                          );
+                        }
+                        return cells;
+                      })()}
+                    </div>
+
+                    <div className="flex justify-end items-center gap-1.5 mt-4 text-[9px] font-mono text-[var(--text-muted)] px-1">
+                      <span>Less</span>
+                      <div className="w-2.5 h-2.5 rounded-sm bg-slate-100 dark:bg-slate-900"></div>
+                      <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/20"></div>
+                      <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/50"></div>
+                      <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></div>
+                      <span>More</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 3: Submissions List */}
+                <div className="p-5 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm text-left">
+                  
+                  {/* Accepted submissions tabs */}
+                  <div className="flex border-b border-[var(--border-color)] text-xs font-bold text-[var(--text-muted)] gap-6 pb-2.5">
+                    <span className="text-emerald-500 border-b-2 border-emerald-500 pb-2.5 px-1 cursor-pointer select-none">Recent AC</span>
+                    <span className="hover:text-[var(--text-primary)] pb-2.5 px-1 cursor-pointer select-none">List</span>
+                    <span className="hover:text-[var(--text-primary)] pb-2.5 px-1 cursor-pointer select-none">Solutions</span>
+                    <span className="hover:text-[var(--text-primary)] pb-2.5 px-1 cursor-pointer select-none">Discuss</span>
+                  </div>
+
+                  <div className="flex flex-col gap-3 text-xs font-semibold text-[var(--text-secondary)]">
+                    {[
+                      { name: 'Longest Nice Substring', time: '6 hours ago', lang: 'JavaScript' },
+                      { name: 'Defuse the Bomb', time: '12 hours ago', lang: 'JavaScript' },
+                      { name: 'Add Two Numbers', time: '1 day ago', lang: 'Java' },
+                      { name: 'Two Sum', time: '2 days ago', lang: 'Python' },
+                      { name: 'Merge Sorted Array', time: '3 days ago', lang: 'C++' },
+                      { name: 'Remove Duplicates from Sorted Array', time: '4 days ago', lang: 'Java' }
+                    ].map((ac, idx) => (
+                      <div key={idx} className="flex justify-between items-center p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)]/30 hover:bg-[var(--bg-secondary)]/60 transition-all">
+                        <div className="flex items-center gap-3">
+                          <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">AC</span>
+                          <span className="text-[var(--text-primary)] font-bold">{ac.name}</span>
+                        </div>
+                        <div className="flex items-center gap-4 text-[10.5px] text-[var(--text-muted)] font-mono">
+                          <span className="text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded text-[9.5px] font-bold">{ac.lang}</span>
+                          <span>{ac.time}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                </div>
+
+              </div>
+
             </div>
           </div>
         )}
