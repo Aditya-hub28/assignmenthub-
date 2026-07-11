@@ -42,6 +42,10 @@ export default function Home() {
   const [cartOrder, setCartOrder] = useState(null);
   const [loyaltyCoins, setLoyaltyCoins] = useState(72);
   const [paymentStep, setPaymentStep] = useState(1); // 1 = form / cart, 2 = card payment, 3 = success
+  const [paymentCard, setPaymentCard] = useState('');
+  const [paymentExpiry, setPaymentExpiry] = useState('');
+  const [paymentCvv, setPaymentCvv] = useState('');
+  const [paymentName, setPaymentName] = useState('Anjali Mishra');
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [rewardModalOpen, setRewardModalOpen] = useState(false);
   const [hasSeenRewardModal, setHasSeenRewardModal] = useState(false);
@@ -680,7 +684,13 @@ int main() {
       };
     } else if (stepsCount === 1) {
       const sem = browsePath[0];
-      const depts = ["Computer Engineering", "Information Technology", "Artificial Intelligence & Data Science", "Electronics & Telecommunication"];
+      const depts = [
+        "Computer Engineering",
+        "Information Technology",
+        "Artificial Intelligence and Machine Learning",
+        "Electronics and Computer Engineering",
+        "Mechanical Engineering"
+      ];
       return {
         type: 'departments',
         list: depts.map(d => ({
@@ -1054,8 +1064,9 @@ int main() {
                         <option value="all">All Departments</option>
                         <option value="Computer Engineering">Computer Engineering</option>
                         <option value="Information Technology">Information Technology</option>
-                        <option value="Artificial Intelligence & Data Science">AI & DS</option>
-                        <option value="Electronics & Telecommunication">EXTC (Telecom)</option>
+                        <option value="Artificial Intelligence and Machine Learning">Artificial Intelligence and Machine Learning</option>
+                        <option value="Electronics and Computer Engineering">Electronics and Computer Engineering</option>
+                        <option value="Mechanical Engineering">Mechanical Engineering</option>
                       </select>
                     </div>
 
@@ -1204,7 +1215,30 @@ int main() {
               ))}
             </div>
 
-            {browseFolderItems.type !== 'files' ? (
+            {browsePath.length >= 2 && browsePath[0] >= 6 ? (
+              <div className="py-8 flex items-center justify-center">
+                <div className="text-center py-12 px-8 border border-dashed border-[var(--border-color)] rounded-[32px] bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm max-w-md w-full flex flex-col items-center justify-center gap-5 shadow-lg animate-scale-in">
+                  <div className="w-14 h-14 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center text-2xl shadow-inner animate-pulse">
+                    🚀
+                  </div>
+                  <div className="text-center">
+                    <h3 className="font-extrabold text-sm uppercase tracking-wider font-heading text-[var(--text-primary)]">
+                      Coming Soon
+                    </h3>
+                    <p className="text-xs text-[var(--text-secondary)] font-semibold leading-relaxed mt-2 font-sans">
+                      Our community is actively gathering syllabus study materials, lab files, and reference books for this semester branch.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBrowsePath(browsePath.slice(0, 1))}
+                    className="px-5 py-2.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-[10px] rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center font-heading"
+                  >
+                    Go Back
+                  </button>
+                </div>
+              </div>
+            ) : browseFolderItems.type !== 'files' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 {browseFolderItems.list.map((folder, i) => (
                   <div 
@@ -1325,8 +1359,9 @@ int main() {
                   >
                     <option value="Computer Engineering">Computer Engineering</option>
                     <option value="Information Technology">Information Technology</option>
-                    <option value="Artificial Intelligence & Data Science">AI & DS</option>
-                    <option value="Electronics & Telecommunication">EXTC (Telecom)</option>
+                    <option value="Artificial Intelligence and Machine Learning">Artificial Intelligence and Machine Learning</option>
+                    <option value="Electronics and Computer Engineering">Electronics and Computer Engineering</option>
+                    <option value="Mechanical Engineering">Mechanical Engineering</option>
                   </select>
                 </div>
               </div>
@@ -1690,7 +1725,7 @@ int main() {
 
         {/* ── DEADLINES TAB ───────────────────────────────────────── */}
         {activeTab === 'calendar' && (
-          <div className="animate-fade-in py-6 max-w-7xl mx-auto px-4 sm:px-6 flex flex-col gap-6 relative">
+          <div className="animate-fade-in py-6 max-w-4xl mx-auto px-4 sm:px-6 flex flex-col gap-6 relative">
             
             {/* 1. Hi Anjali! Greeting Card Banner */}
             <div className="p-6 rounded-3xl tsec-glass-card relative overflow-hidden flex flex-col gap-4 text-left">
@@ -1700,7 +1735,7 @@ int main() {
               
               <div className="flex flex-col gap-1 text-left relative z-10">
                 <h1 className="text-xl sm:text-2xl font-extrabold font-heading text-[var(--text-primary)] flex items-center gap-2">
-                  <span>👋 Hi {user ? user.name : 'Anjali'}!</span>
+                  <span>👋 Hey Buddy!</span>
                   <GraduationCap className="text-purple-500 animate-float-slow" size={24} />
                 </h1>
                 <p className="text-xs sm:text-sm text-[var(--text-secondary)] font-medium">
@@ -1813,255 +1848,104 @@ int main() {
               </div>
             </div>
 
-            {/* Redesigned columns */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-              {/* Congratulations Reward Popup / Modal */}
-              {rewardModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4 animate-fade-in">
-                  <div className="bg-white dark:bg-slate-900 rounded-[24px] p-8 max-w-sm w-full text-center shadow-2xl border border-[var(--border-color)] relative overflow-hidden animate-scale-in">
-                    <div className="absolute inset-0 pointer-events-none">
-                      <div className="absolute top-10 left-10 w-2.5 h-2.5 bg-pink-500 rounded-full animate-ping"></div>
-                      <div className="absolute top-20 right-10 w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
-                      <div className="absolute top-4 left-1/2 w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
-                    </div>
-
-                    <div className="w-16 h-16 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 flex items-center justify-center text-3xl mx-auto mb-5 shadow-inner animate-bounce">
-                      🎁
-                    </div>
-
-                    <h3 className="font-extrabold text-lg text-[var(--text-primary)] font-heading uppercase tracking-wide">
-                      🎉 Congratulations!
-                    </h3>
-                    <p className="text-xs text-[var(--text-secondary)] font-medium leading-relaxed mt-2 font-sans">
-                      You have successfully collected <span className="text-purple-600 font-bold">100 Loyalty Coins!</span>
-                    </p>
-                    <p className="text-sm text-[var(--text-primary)] font-extrabold mt-4 leading-normal font-sans">
-                      🎁 You have unlocked <span className="text-emerald-600">1 FREE Assignment.</span>
-                    </p>
-
-                    <div className="mt-6 flex flex-col gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLoyaltyCoins(prev => prev - 100);
-                          setRewardModalOpen(false);
-                          pushNotification("Reward Redeemed!", "1 Free Assignment credit applied to your next checkout.");
-                        }}
-                        className="w-full py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center font-heading"
-                      >
-                        ✨ Redeem Reward
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRewardModalOpen(false)}
-                        className="w-full py-2.5 border border-[var(--border-color)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-bold text-xs rounded-xl cursor-pointer transition-all active:scale-95 text-center font-heading"
-                      >
-                        Later
-                      </button>
-                    </div>
+            {/* Congratulations Reward Popup / Modal */}
+            {rewardModalOpen && (
+              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4 animate-fade-in">
+                <div className="bg-white dark:bg-slate-900 rounded-[24px] p-8 max-w-sm w-full text-center shadow-2xl border border-[var(--border-color)] relative overflow-hidden animate-scale-in">
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute top-10 left-10 w-2.5 h-2.5 bg-pink-500 rounded-full animate-ping"></div>
+                    <div className="absolute top-20 right-10 w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
+                    <div className="absolute top-4 left-1/2 w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
                   </div>
-                </div>
-              )}
 
-              {/* LEFT SECTION: Order Creation Panel */}
-              <div className="lg:col-span-7 flex flex-col gap-6 text-left">
-                <div className="border-b border-[var(--border-color)] pb-3">
-                  <h1 className="text-2xl font-extrabold font-heading tracking-tight text-[var(--text-primary)]">
-                    Order Creation Panel
-                  </h1>
-                  <p className="text-xs text-[var(--text-secondary)] mt-1">
-                    Configure assignment or manual requirements to match writer services.
+                  <div className="w-16 h-16 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 flex items-center justify-center text-3xl mx-auto mb-5 shadow-inner animate-bounce">
+                    🎁
+                  </div>
+
+                  <h3 className="font-extrabold text-lg text-[var(--text-primary)] font-heading uppercase tracking-wide">
+                    🎉 Congratulations!
+                  </h3>
+                  <p className="text-xs text-[var(--text-secondary)] font-medium leading-relaxed mt-2 font-sans">
+                    You have successfully collected <span className="text-purple-600 font-bold">100 Loyalty Coins!</span>
                   </p>
-                </div>
+                  <p className="text-sm text-[var(--text-primary)] font-extrabold mt-4 leading-normal font-sans">
+                    🎁 You have unlocked <span className="text-emerald-600">1 FREE Assignment.</span>
+                  </p>
 
-                {/* Accordion 1: Assignment Order */}
-                <div className="tsec-dashboard-card overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setActiveAccordion(activeAccordion === 'assignment' ? null : 'assignment')}
-                    className="w-full p-5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all font-extrabold text-sm tracking-wide text-left cursor-pointer uppercase font-heading text-[var(--text-primary)]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-sans font-extrabold">1</span>
-                      <span>Assignment Order</span>
-                    </div>
-                    <ChevronDown size={16} className={`transition-transform duration-300 ${activeAccordion === 'assignment' ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  <div className={`accordion-wrapper ${activeAccordion === 'assignment' ? 'open' : ''}`}>
-                    <div className="accordion-inner">
-                      <div className="p-6 border-t border-[var(--border-color)] flex flex-col gap-5">
-                        
-                        {/* Subject Name Input */}
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Subject Name</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Applied Physics Lab 3 Report"
-                            value={assignmentSubject}
-                            onChange={(e) => setAssignmentSubject(e.target.value)}
-                            className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium"
-                          />
-                        </div>
-
-                        {/* Grid for Deadline and Pages */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {/* Deadline Date Picker */}
-                          <div className="flex flex-col gap-1.5">
-                            <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Deadline Date</label>
-                            <input
-                              type="date"
-                              value={assignmentDeadline}
-                              onChange={(e) => setAssignmentDeadline(e.target.value)}
-                              min={new Date().toISOString().split('T')[0]}
-                              className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium font-mono"
-                            />
-                          </div>
-
-                          {/* Number of Pages Selector */}
-                          <div className="flex flex-col gap-1.5">
-                            <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Number of Pages (1-100)</label>
-                            <select
-                              value={assignmentPages}
-                              onChange={(e) => setAssignmentPages(Number(e.target.value))}
-                              className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium"
-                            >
-                              {Array.from({ length: 100 }, (_, i) => i + 1).map(num => (
-                                <option key={num} value={num}>{num} {num === 1 ? 'Page' : 'Pages'}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Drag & Drop File Upload */}
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">File Upload Section</label>
-                          <div className="border-2 border-dashed border-[var(--border-color)] hover:border-blue-500/30 rounded-2xl p-6 bg-slate-50/20 dark:bg-slate-900/10 transition-all text-center flex flex-col items-center justify-center cursor-pointer group relative">
-                            <input 
-                              type="file" 
-                              multiple 
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                              onChange={(e) => {
-                                const files = Array.from(e.target.files || []);
-                                const formatted = files.map(f => ({ name: f.name, size: (f.size / 1024).toFixed(1) + ' KB' }));
-                                setAssignmentFiles(prev => [...prev, ...formatted]);
-                                pushNotification("File Added", `${files.length} file(s) attached.`);
-                              }}
-                            />
-                            <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-all">
-                              <Plus size={18} />
-                            </div>
-                            <p className="text-xs font-bold text-[var(--text-primary)]">Drag & drop files here or click to browse</p>
-                            <p className="text-[10px] text-[var(--text-muted)] font-semibold mt-1">PDF, Word, or images up to 25MB</p>
-                          </div>
-
-                          {/* List uploaded files */}
-                          {assignmentFiles.length > 0 && (
-                            <div className="flex flex-col gap-1.5 mt-2">
-                              {assignmentFiles.map((file, idx) => (
-                                <div key={idx} className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-xs font-medium">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded">FILE</span>
-                                    <span className="text-[var(--text-primary)] truncate max-w-[200px] sm:max-w-xs">{file.name}</span>
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-[10px] text-[var(--text-muted)] font-mono">{file.size}</span>
-                                    <button 
-                                      type="button" 
-                                      onClick={() => {
-                                        setAssignmentFiles(prev => prev.filter((_, i) => i !== idx));
-                                        pushNotification("File Removed", "Attached document removed.");
-                                      }}
-                                      className="text-[var(--text-muted)] hover:text-red-500 cursor-pointer p-0.5"
-                                    >
-                                      <X size={13} />
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Bottom Info Block */}
-                        <div className="border-t border-[var(--border-color)] pt-5 mt-2 flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!assignmentSubject || !assignmentDeadline) {
-                                pushNotification("Incomplete Fields", "Please specify subject and deadline.");
-                                return;
-                              }
-                              const price = assignmentPages * 10.0;
-                              setCartOrder({
-                                type: 'Assignment Order',
-                                subject: assignmentSubject,
-                                deadline: assignmentDeadline,
-                                pages: assignmentPages,
-                                files: assignmentFiles,
-                                price: price
-                              });
-                              pushNotification("Added to Cart", `'${assignmentSubject}' added to checkout.`);
-                              setActiveAccordion('pricing');
-                              setPaymentStep(1);
-
-                              // Scroll smoothly to pricing section
-                              setTimeout(() => {
-                                const el = document.getElementById('pricing-accordion');
-                                if (el) {
-                                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                }
-                              }, 150);
-                            }}
-                            className="px-5 py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center flex items-center justify-center gap-1.5"
-                          >
-                            <span>Add to Cart</span>
-                          </button>
-                        </div>
-
-                      </div>
-                    </div>
+                  <div className="mt-6 flex flex-col gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoyaltyCoins(prev => prev - 100);
+                        setRewardModalOpen(false);
+                        pushNotification("Reward Redeemed!", "1 Free Assignment credit applied to your next checkout.");
+                      }}
+                      className="w-full py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center font-heading"
+                    >
+                      ✨ Redeem Reward
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRewardModalOpen(false)}
+                      className="w-full py-2.5 border border-[var(--border-color)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-bold text-xs rounded-xl cursor-pointer transition-all active:scale-95 text-center font-heading"
+                    >
+                      Later
+                    </button>
                   </div>
                 </div>
+              </div>
+            )}
 
-                {/* Accordion 2: Manual Order */}
-                <div className="tsec-dashboard-card overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setActiveAccordion(activeAccordion === 'manual' ? null : 'manual')}
-                    className="w-full p-5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all font-extrabold text-sm tracking-wide text-left cursor-pointer uppercase font-heading text-[var(--text-primary)]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-sans font-extrabold">2</span>
-                      <span>Manual Order</span>
-                    </div>
-                    <ChevronDown size={16} className={`transition-transform duration-300 ${activeAccordion === 'manual' ? 'rotate-180' : ''}`} />
-                  </button>
+            {/* CENTERED SECTION: Order Creation Panel */}
+            <div className="flex flex-col gap-6 text-left max-w-3xl mx-auto w-full">
+              <div className="border-b border-[var(--border-color)] pb-3">
+                <h1 className="text-2xl font-extrabold font-heading tracking-tight text-[var(--text-primary)]">
+                  Order Creation Panel
+                </h1>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">
+                  Configure assignment or manual requirements to match writer services.
+                </p>
+              </div>
 
-                  <div className={`accordion-wrapper ${activeAccordion === 'manual' ? 'open' : ''}`}>
-                    <div className="accordion-inner">
-                      <div className="p-6 border-t border-[var(--border-color)] flex flex-col gap-5">
-                        
-                        {/* Subject Name Input */}
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Subject Name</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Mechanical Workshop Manual 4"
-                            value={manualSubject}
-                            onChange={(e) => setManualSubject(e.target.value)}
-                            className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium"
-                          />
-                        </div>
+              {/* Accordion 1: Assignment Order */}
+              <div className="tsec-dashboard-card overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setActiveAccordion(activeAccordion === 'assignment' ? null : 'assignment')}
+                  className="w-full p-5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all font-extrabold text-sm tracking-wide text-left cursor-pointer uppercase font-heading text-[var(--text-primary)]"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-sans font-extrabold">1</span>
+                    <span>Assignment Order</span>
+                  </div>
+                  <ChevronDown size={16} className={`transition-transform duration-300 ${activeAccordion === 'assignment' ? 'rotate-180' : ''}`} />
+                </button>
 
+                <div className={`accordion-wrapper ${activeAccordion === 'assignment' ? 'open' : ''}`}>
+                  <div className="accordion-inner">
+                    <div className="p-6 border-t border-[var(--border-color)] flex flex-col gap-5">
+                      
+                      {/* Subject Name Input */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Subject Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Applied Physics Lab 3 Report"
+                          value={assignmentSubject}
+                          onChange={(e) => setAssignmentSubject(e.target.value)}
+                          className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium"
+                        />
+                      </div>
+
+                      {/* Grid for Deadline and Pages */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Deadline Date Picker */}
                         <div className="flex flex-col gap-1.5">
                           <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Deadline Date</label>
                           <input
                             type="date"
-                            value={manualDeadline}
-                            onChange={(e) => setManualDeadline(e.target.value)}
+                            value={assignmentDeadline}
+                            onChange={(e) => setAssignmentDeadline(e.target.value)}
                             min={new Date().toISOString().split('T')[0]}
                             className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium font-mono"
                           />
@@ -2071,8 +1955,8 @@ int main() {
                         <div className="flex flex-col gap-1.5">
                           <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Number of Pages (1-100)</label>
                           <select
-                            value={manualPages}
-                            onChange={(e) => setManualPages(Number(e.target.value))}
+                            value={assignmentPages}
+                            onChange={(e) => setAssignmentPages(Number(e.target.value))}
                             className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium"
                           >
                             {Array.from({ length: 100 }, (_, i) => i + 1).map(num => (
@@ -2080,584 +1964,522 @@ int main() {
                             ))}
                           </select>
                         </div>
-
-                        {/* Drag & Drop File Upload */}
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">File Upload Section</label>
-                          <div className="border-2 border-dashed border-[var(--border-color)] hover:border-blue-500/30 rounded-2xl p-6 bg-slate-50/20 dark:bg-slate-900/10 transition-all text-center flex flex-col items-center justify-center cursor-pointer group relative">
-                            <input 
-                              type="file" 
-                              multiple 
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                              onChange={(e) => {
-                                const files = Array.from(e.target.files || []);
-                                const formatted = files.map(f => ({ name: f.name, size: (f.size / 1024).toFixed(1) + ' KB' }));
-                                setManualFiles(prev => [...prev, ...formatted]);
-                                pushNotification("File Added", `${files.length} file(s) attached.`);
-                              }}
-                            />
-                            <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-all">
-                              <Plus size={18} />
-                            </div>
-                            <p className="text-xs font-bold text-[var(--text-primary)]">Drag & drop files here or click to browse</p>
-                            <p className="text-[10px] text-[var(--text-muted)] font-semibold mt-1">PDF, Word, or images up to 25MB</p>
-                          </div>
-
-                          {/* List uploaded files */}
-                          {manualFiles.length > 0 && (
-                            <div className="flex flex-col gap-1.5 mt-2">
-                              {manualFiles.map((file, idx) => (
-                                <div key={idx} className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-xs font-medium">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded">FILE</span>
-                                    <span className="text-[var(--text-primary)] truncate max-w-[200px] sm:max-w-xs">{file.name}</span>
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-[10px] text-[var(--text-muted)] font-mono">{file.size}</span>
-                                    <button 
-                                      type="button" 
-                                      onClick={() => {
-                                        setManualFiles(prev => prev.filter((_, i) => i !== idx));
-                                        pushNotification("File Removed", "Attached document removed.");
-                                      }}
-                                      className="text-[var(--text-muted)] hover:text-red-500 cursor-pointer p-0.5"
-                                    >
-                                      <X size={13} />
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Bottom Info Block */}
-                        <div className="border-t border-[var(--border-color)] pt-5 mt-2 flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!manualSubject || !manualDeadline) {
-                                pushNotification("Incomplete Fields", "Please specify subject and deadline.");
-                                return;
-                              }
-                              const price = manualPages * 15.0;
-                              setCartOrder({
-                                type: 'Manual Order',
-                                subject: manualSubject,
-                                deadline: manualDeadline,
-                                pages: manualPages,
-                                files: manualFiles,
-                                price: price
-                              });
-                              pushNotification("Added to Cart", `'${manualSubject}' manual order added to checkout.`);
-                              setActiveAccordion('pricing');
-                              setPaymentStep(1);
-
-                              // Scroll smoothly to pricing section
-                              setTimeout(() => {
-                                const el = document.getElementById('pricing-accordion');
-                                if (el) {
-                                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                }
-                              }, 150);
-                            }}
-                            className="px-5 py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center flex items-center justify-center gap-1.5"
-                          >
-                            <span>Add to Cart</span>
-                          </button>
-                        </div>
-
                       </div>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Accordion 3: Pricing & Order / Payment Flow */}
-                <div id="pricing-accordion" className="tsec-dashboard-card overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setActiveAccordion(activeAccordion === 'pricing' ? null : 'pricing')}
-                    className="w-full p-5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all font-extrabold text-sm tracking-wide text-left cursor-pointer uppercase font-heading text-[var(--text-primary)]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-sans font-extrabold">3</span>
-                      <span>Pricing & Order</span>
-                    </div>
-                    <ChevronDown size={16} className={`transition-transform duration-300 ${activeAccordion === 'pricing' ? 'rotate-180' : ''}`} />
-                  </button>
+                      {/* Drag & Drop File Upload */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">File Upload Section</label>
+                        <div className="border-2 border-dashed border-[var(--border-color)] hover:border-blue-500/30 rounded-2xl p-6 bg-slate-50/20 dark:bg-slate-900/10 transition-all text-center flex flex-col items-center justify-center cursor-pointer group relative">
+                          <input 
+                            type="file" 
+                            multiple 
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              const formatted = files.map(f => ({ name: f.name, size: (f.size / 1024).toFixed(1) + ' KB' }));
+                              setAssignmentFiles(prev => [...prev, ...formatted]);
+                              pushNotification("File Added", `${files.length} file(s) attached.`);
+                            }}
+                          />
+                          <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-all">
+                            <Plus size={18} />
+                          </div>
+                          <p className="text-xs font-bold text-[var(--text-primary)]">Drag & drop files here or click to browse</p>
+                          <p className="text-[10px] text-[var(--text-muted)] font-semibold mt-1">PDF, Word, or images up to 25MB</p>
+                        </div>
 
-                  <div className={`accordion-wrapper ${activeAccordion === 'pricing' ? 'open' : ''}`}>
-                    <div className="accordion-inner">
-                      <div className="p-6 border-t border-[var(--border-color)]">
-                        
-                        {/* Sub-step 1: Cart display */}
-                        {paymentStep === 1 && (
-                          <div className="flex flex-col gap-5">
-                            {!cartOrder ? (
-                              <div className="text-center py-10 text-xs text-[var(--text-muted)] font-medium">
-                                No order selected. Fill in your Assignment or Manual order details above and click 'Add to Cart'.
-                              </div>
-                            ) : (
-                              <div className="flex flex-col gap-5 animate-fade-in text-left">
-                                {/* Selected Order Summary */}
-                                <div className="flex flex-col gap-3">
-                                  <h3 className="font-extrabold text-xs text-[var(--text-primary)] font-heading uppercase tracking-wider font-mono border-b border-[var(--border-color)] pb-2">Selected Order Summary</h3>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-semibold text-[var(--text-secondary)]">
-                                    <div>Order Type: <span className="text-[var(--text-primary)] font-bold">{cartOrder.type}</span></div>
-                                    <div>Subject: <span className="text-[var(--text-primary)] font-bold">{cartOrder.subject}</span></div>
-                                    <div>Number of Pages: <span className="text-[var(--text-primary)] font-bold">{cartOrder.pages} pages</span></div>
-                                    <div>Deadline Date: <span className="text-[var(--text-primary)] font-bold font-mono">{new Date(cartOrder.deadline).toLocaleDateString()}</span></div>
-                                  </div>
+                        {/* List uploaded files */}
+                        {assignmentFiles.length > 0 && (
+                          <div className="flex flex-col gap-1.5 mt-2">
+                            {assignmentFiles.map((file, idx) => (
+                              <div key={idx} className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-xs font-medium">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded">FILE</span>
+                                  <span className="text-[var(--text-primary)] truncate max-w-[200px] sm:max-w-xs">{file.name}</span>
                                 </div>
-
-                                {/* Price Calculation Table */}
-                                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-[var(--border-color)] flex flex-col gap-3.5">
-                                  <div className="flex justify-between text-xs font-medium text-[var(--text-secondary)]">
-                                    <span>Number of Pages</span>
-                                    <span>{cartOrder.pages} pages</span>
-                                  </div>
-                                  <div className="flex justify-between text-xs font-medium text-[var(--text-secondary)]">
-                                    <span>Price Per Page</span>
-                                    <span>₹{cartOrder.type === 'Assignment Order' ? '10.00' : '15.00'}</span>
-                                  </div>
-                                  <div className="flex justify-between text-xs font-medium text-[var(--text-secondary)]">
-                                    <span>Tax (2.5%)</span>
-                                    <span>₹{(cartOrder.price * 0.025).toFixed(2)}</span>
-                                  </div>
-                                  <div className="flex justify-between text-sm font-extrabold text-[var(--text-primary)] border-t border-[var(--border-color)] pt-3">
-                                    <span>Total Price</span>
-                                    <span className="text-purple-600 font-sans">₹{(cartOrder.price * 1.025).toFixed(2)}</span>
-                                  </div>
-                                </div>
-
-                                {/* Proceed Button */}
-                                <div className="flex justify-end mt-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => setPaymentStep(2)}
-                                    className="px-6 py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                                <div className="flex items-center gap-3">
+                                  <span className="text-[10px] text-[var(--text-muted)] font-mono">{file.size}</span>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => {
+                                      setAssignmentFiles(prev => prev.filter((_, i) => i !== idx));
+                                      pushNotification("File Removed", "Attached document removed.");
+                                    }}
+                                    className="text-[var(--text-muted)] hover:text-red-500 cursor-pointer p-0.5"
                                   >
-                                    <CreditCard size={13} />
-                                    <span>Proceed to Payment</span>
+                                    <X size={13} />
                                   </button>
                                 </div>
                               </div>
-                            )}
+                            ))}
                           </div>
                         )}
+                      </div>
 
-                        {/* Sub-step 2: Payment Portal details */}
-                        {paymentStep === 2 && cartOrder && (
-                          <div className="max-w-md mx-auto w-full animate-scale-in flex flex-col gap-5 text-left">
-                            <div className="flex items-center gap-2.5 border-b border-[var(--border-color)] pb-3">
-                              <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-xs">🔒</div>
-                              <div>
-                                <h3 className="font-extrabold text-xs uppercase tracking-wider font-heading text-[var(--text-primary)]">Secure Payment Portal</h3>
-                                <p className="text-[10px] text-[var(--text-muted)] font-medium">Verify summary and input payment card info</p>
+                      {/* Bottom Info Block */}
+                      <div className="border-t border-[var(--border-color)] pt-5 mt-2 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!assignmentSubject || !assignmentDeadline) {
+                              pushNotification("Incomplete Fields", "Please specify subject and deadline.");
+                              return;
+                            }
+                            const price = assignmentPages * 10.0;
+                            setCartOrder({
+                              type: 'Assignment Order',
+                              subject: assignmentSubject,
+                              deadline: assignmentDeadline,
+                              pages: assignmentPages,
+                              files: assignmentFiles,
+                              price: price
+                            });
+                            pushNotification("Added to Cart", `'${assignmentSubject}' added to checkout.`);
+                            setActiveAccordion('pricing');
+                            setPaymentStep(1);
+
+                            // Scroll smoothly to pricing section
+                            setTimeout(() => {
+                              const el = document.getElementById('pricing-accordion');
+                              if (el) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }
+                            }, 150);
+                          }}
+                          className="px-5 py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center flex items-center justify-center gap-1.5"
+                        >
+                          <span>Add to Cart</span>
+                        </button>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Accordion 2: Manual Order */}
+              <div className="tsec-dashboard-card overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setActiveAccordion(activeAccordion === 'manual' ? null : 'manual')}
+                  className="w-full p-5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all font-extrabold text-sm tracking-wide text-left cursor-pointer uppercase font-heading text-[var(--text-primary)]"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-sans font-extrabold">2</span>
+                    <span>Manual Order</span>
+                  </div>
+                  <ChevronDown size={16} className={`transition-transform duration-300 ${activeAccordion === 'manual' ? 'rotate-180' : ''}`} />
+                </button>
+
+                <div className={`accordion-wrapper ${activeAccordion === 'manual' ? 'open' : ''}`}>
+                  <div className="accordion-inner">
+                    <div className="p-6 border-t border-[var(--border-color)] flex flex-col gap-5">
+                      
+                      {/* Subject Name Input */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Subject Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Mechanical Workshop Manual 4"
+                          value={manualSubject}
+                          onChange={(e) => setManualSubject(e.target.value)}
+                          className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium"
+                        />
+                      </div>
+
+                      {/* Deadline Date Picker */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Deadline Date</label>
+                        <input
+                          type="date"
+                          value={manualDeadline}
+                          onChange={(e) => setManualDeadline(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium font-mono"
+                        />
+                      </div>
+
+                      {/* Number of Pages Selector */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Number of Pages (1-100)</label>
+                        <select
+                          value={manualPages}
+                          onChange={(e) => setManualPages(Number(e.target.value))}
+                          className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium"
+                        >
+                          {Array.from({ length: 100 }, (_, i) => i + 1).map(num => (
+                            <option key={num} value={num}>{num} {num === 1 ? 'Page' : 'Pages'}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Drag & Drop File Upload */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">File Upload Section</label>
+                        <div className="border-2 border-dashed border-[var(--border-color)] hover:border-blue-500/30 rounded-2xl p-6 bg-slate-50/20 dark:bg-slate-900/10 transition-all text-center flex flex-col items-center justify-center cursor-pointer group relative">
+                          <input 
+                            type="file" 
+                            multiple 
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              const formatted = files.map(f => ({ name: f.name, size: (f.size / 1024).toFixed(1) + ' KB' }));
+                              setManualFiles(prev => [...prev, ...formatted]);
+                              pushNotification("File Added", `${files.length} file(s) attached.`);
+                            }}
+                          />
+                          <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-all">
+                            <Plus size={18} />
+                          </div>
+                          <p className="text-xs font-bold text-[var(--text-primary)]">Drag & drop files here or click to browse</p>
+                          <p className="text-[10px] text-[var(--text-muted)] font-semibold mt-1">PDF, Word, or images up to 25MB</p>
+                        </div>
+
+                        {/* List uploaded files */}
+                        {manualFiles.length > 0 && (
+                          <div className="flex flex-col gap-1.5 mt-2">
+                            {manualFiles.map((file, idx) => (
+                              <div key={idx} className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-xs font-medium">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded">FILE</span>
+                                  <span className="text-[var(--text-primary)] truncate max-w-[200px] sm:max-w-xs">{file.name}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-[10px] text-[var(--text-muted)] font-mono">{file.size}</span>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => {
+                                      setManualFiles(prev => prev.filter((_, i) => i !== idx));
+                                      pushNotification("File Removed", "Attached document removed.");
+                                    }}
+                                    className="text-[var(--text-muted)] hover:text-red-500 cursor-pointer p-0.5"
+                                  >
+                                    <X size={13} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Bottom Info Block */}
+                      <div className="border-t border-[var(--border-color)] pt-5 mt-2 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!manualSubject || !manualDeadline) {
+                              pushNotification("Incomplete Fields", "Please specify subject and deadline.");
+                              return;
+                            }
+                            const price = manualPages * 15.0;
+                            setCartOrder({
+                              type: 'Manual Order',
+                              subject: manualSubject,
+                              deadline: manualDeadline,
+                              pages: manualPages,
+                              files: manualFiles,
+                              price: price
+                            });
+                            pushNotification("Added to Cart", `'${manualSubject}' manual order added to checkout.`);
+                            setActiveAccordion('pricing');
+                            setPaymentStep(1);
+
+                            // Scroll smoothly to pricing section
+                            setTimeout(() => {
+                              const el = document.getElementById('pricing-accordion');
+                              if (el) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }
+                            }, 150);
+                          }}
+                          className="px-5 py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center flex items-center justify-center gap-1.5"
+                        >
+                          <span>Add to Cart</span>
+                        </button>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Accordion 3: Pricing & Order / Payment Flow */}
+              <div id="pricing-accordion" className="tsec-dashboard-card overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setActiveAccordion(activeAccordion === 'pricing' ? null : 'pricing')}
+                  className="w-full p-5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all font-extrabold text-sm tracking-wide text-left cursor-pointer uppercase font-heading text-[var(--text-primary)]"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-sans font-extrabold">3</span>
+                    <span>Pricing & Order</span>
+                  </div>
+                  <ChevronDown size={16} className={`transition-transform duration-300 ${activeAccordion === 'pricing' ? 'rotate-180' : ''}`} />
+                </button>
+
+                <div className={`accordion-wrapper ${activeAccordion === 'pricing' ? 'open' : ''}`}>
+                  <div className="accordion-inner">
+                    <div className="p-6 border-t border-[var(--border-color)]">
+                      
+                      {/* Sub-step 1: Cart display */}
+                      {paymentStep === 1 && (
+                        <div className="flex flex-col gap-5">
+                          {!cartOrder ? (
+                            <div className="text-center py-10 text-xs text-[var(--text-muted)] font-medium">
+                              No order selected. Fill in your Assignment or Manual order details above and click 'Add to Cart'.
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-5 animate-fade-in text-left">
+                              {/* Selected Order Summary */}
+                              <div className="flex flex-col gap-3">
+                                <h3 className="font-extrabold text-xs text-[var(--text-primary)] font-heading uppercase tracking-wider font-mono border-b border-[var(--border-color)] pb-2">Selected Order Summary</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-semibold text-[var(--text-secondary)]">
+                                  <div>Order Type: <span className="text-[var(--text-primary)] font-bold">{cartOrder.type}</span></div>
+                                  <div>Subject: <span className="text-[var(--text-primary)] font-bold">{cartOrder.subject}</span></div>
+                                  <div>Number of Pages: <span className="text-[var(--text-primary)] font-bold">{cartOrder.pages} pages</span></div>
+                                  <div>Deadline Date: <span className="text-[var(--text-primary)] font-bold font-mono">{new Date(cartOrder.deadline).toLocaleDateString()}</span></div>
+                                </div>
+                              </div>
+
+                              {/* Price Calculation Table */}
+                              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-[var(--border-color)] flex flex-col gap-3.5">
+                                <div className="flex justify-between text-xs font-medium text-[var(--text-secondary)]">
+                                  <span>Number of Pages</span>
+                                  <span>{cartOrder.pages} pages</span>
+                                </div>
+                                <div className="flex justify-between text-xs font-medium text-[var(--text-secondary)]">
+                                  <span>Price Per Page</span>
+                                  <span>₹{cartOrder.type === 'Assignment Order' ? '10.00' : '15.00'}</span>
+                                </div>
+                                <div className="flex justify-between text-xs font-medium text-[var(--text-secondary)]">
+                                  <span>Tax (2.5%)</span>
+                                  <span>₹{(cartOrder.price * 0.025).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm font-extrabold text-[var(--text-primary)] border-t border-[var(--border-color)] pt-3">
+                                  <span>Total Price</span>
+                                  <span className="text-purple-600 font-sans">₹{(cartOrder.price * 1.025).toFixed(2)}</span>
+                                </div>
+                              </div>
+
+                              {/* Proceed Button */}
+                              <div className="flex justify-end mt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setPaymentStep(2)}
+                                  className="px-6 py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                                >
+                                  <CreditCard size={13} />
+                                  <span>Proceed to Payment</span>
+                                </button>
                               </div>
                             </div>
+                          )}
+                        </div>
+                      )}
 
-                            <div className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] flex justify-between text-xs font-semibold text-[var(--text-secondary)]">
-                              <span>Total Due:</span>
-                              <span className="text-purple-600 font-sans">₹{(cartOrder.price * 1.025).toFixed(2)}</span>
+                      {/* Sub-step 2: Payment Portal details */}
+                      {paymentStep === 2 && cartOrder && (
+                        <div className="max-w-md mx-auto w-full animate-scale-in flex flex-col gap-5 text-left">
+                          <div className="flex items-center gap-2.5 border-b border-[var(--border-color)] pb-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-xs">🔒</div>
+                            <div>
+                              <h3 className="font-extrabold text-xs uppercase tracking-wider font-heading text-[var(--text-primary)]">Secure Payment Portal</h3>
+                              <p className="text-[10px] text-[var(--text-muted)] font-medium">Verify summary and input payment card info</p>
+                            </div>
+                          </div>
+
+                          <div className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] flex justify-between text-xs font-semibold text-[var(--text-secondary)]">
+                            <span>Total Due:</span>
+                            <span className="text-purple-600 font-sans">₹{(cartOrder.price * 1.025).toFixed(2)}</span>
+                          </div>
+
+                          <form 
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              if (!paymentCard || !paymentExpiry || !paymentCvv) {
+                                pushNotification("Input Error", "Please fill in all credit card details.");
+                                return;
+                              }
+                              pushNotification("Authorizing Payment", "Processing secure card credentials...");
+                              setTimeout(() => {
+                                // Add to active orders
+                                const newOrder = {
+                                  id: "TSEC-" + (1000 + Math.floor(Math.random() * 9000)),
+                                  subject: cartOrder.subject,
+                                  pages: cartOrder.pages,
+                                  status: "Pending"
+                                };
+                                setDashboardActiveOrders(prev => [newOrder, ...prev]);
+                                
+                                // Add to deadlines list
+                                const newDeadline = {
+                                  id: Date.now(),
+                                  name: `${cartOrder.type === 'Assignment Order' ? 'Assignment' : 'Manual'} Submission`,
+                                  subject: cartOrder.subject,
+                                  orderId: newOrder.id,
+                                  dueDate: new Date(cartOrder.deadline).toISOString(),
+                                  status: "Active"
+                                };
+                                setDashboardDeadlines(prev => [newDeadline, ...prev]);
+
+                                // Add 10 loyalty coins (completed order)
+                                setLoyaltyCoins(prev => prev + 10);
+                                setPaymentStep(3); // Go to success step
+                                pushNotification("Payment Confirmed", `Homework matched and added to active orders tracker.`);
+                              }, 1000);
+                            }}
+                            className="flex flex-col gap-3.5"
+                          >
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Cardholder Name</label>
+                              <input 
+                                required 
+                                type="text" 
+                                placeholder="e.g. Anjali Mishra" 
+                                value={paymentName} 
+                                onChange={(e) => setPaymentName(e.target.value)} 
+                                className="p-3 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 font-semibold"
+                              />
                             </div>
 
-                            <form 
-                              onSubmit={(e) => {
-                                e.preventDefault();
-                                if (!paymentCard || !paymentExpiry || !paymentCvv) {
-                                  pushNotification("Input Error", "Please fill in all credit card details.");
-                                  return;
-                                }
-                                pushNotification("Authorizing Payment", "Processing secure card credentials...");
-                                setTimeout(() => {
-                                  // Add to active orders
-                                  const newOrder = {
-                                    id: "TSEC-" + (1000 + Math.floor(Math.random() * 9000)),
-                                    subject: cartOrder.subject,
-                                    pages: cartOrder.pages,
-                                    status: "Pending"
-                                  };
-                                  setDashboardActiveOrders(prev => [newOrder, ...prev]);
-                                  
-                                  // Add to deadlines list
-                                  const newDeadline = {
-                                    id: Date.now(),
-                                    name: `${cartOrder.type === 'Assignment Order' ? 'Assignment' : 'Manual'} Submission`,
-                                    subject: cartOrder.subject,
-                                    orderId: newOrder.id,
-                                    dueDate: new Date(cartOrder.deadline).toISOString(),
-                                    status: "Active"
-                                  };
-                                  setDashboardDeadlines(prev => [newDeadline, ...prev]);
-
-                                  // Add 10 loyalty coins (completed order)
-                                  setLoyaltyCoins(prev => prev + 10);
-                                  setPaymentStep(3); // Go to success step
-                                  pushNotification("Payment Confirmed", `Homework matched and added to active orders tracker.`);
-                                }, 1000);
-                              }}
-                              className="flex flex-col gap-3.5"
-                            >
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Cardholder Name</label>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Card Number</label>
+                              <div className="relative flex items-center font-mono">
+                                <span className="absolute left-3 text-[var(--text-muted)]">
+                                  <Lock size={12} />
+                                </span>
                                 <input 
                                   required 
                                   type="text" 
-                                  placeholder="e.g. Anjali Mishra" 
-                                  value={paymentName} 
-                                  onChange={(e) => setPaymentName(e.target.value)} 
-                                  className="p-3 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 font-semibold"
+                                  placeholder="•••• •••• •••• ••••" 
+                                  value={paymentCard} 
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+                                    const matches = val.match(/\d{4,16}/g);
+                                    const match = matches && matches[0] || '';
+                                    const parts = [];
+                                    for (let i = 0, len = match.length; i < len; i += 4) {
+                                      parts.push(match.substring(i, i + 4));
+                                    }
+                                    setPaymentCard(parts.length > 0 ? parts.join(' ') : val);
+                                  }} 
+                                  maxLength={19}
+                                  className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 font-medium font-mono"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="flex flex-col gap-1">
+                                <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Expiry Date</label>
+                                <input 
+                                  required 
+                                  type="text" 
+                                  placeholder="MM/YY" 
+                                  value={paymentExpiry} 
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+                                    setPaymentExpiry(val.length >= 2 ? val.slice(0, 2) + '/' + val.slice(2, 4) : val);
+                                  }} 
+                                  maxLength={5}
+                                  className="p-2.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 font-medium font-mono text-center"
                                 />
                               </div>
 
                               <div className="flex flex-col gap-1">
-                                <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Card Number</label>
-                                <div className="relative flex items-center font-mono">
-                                  <span className="absolute left-3 text-[var(--text-muted)]">
-                                    <Lock size={12} />
-                                  </span>
-                                  <input 
-                                    required 
-                                    type="text" 
-                                    placeholder="•••• •••• •••• ••••" 
-                                    value={paymentCard} 
-                                    onChange={(e) => {
-                                      const val = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-                                      const matches = val.match(/\d{4,16}/g);
-                                      const match = matches && matches[0] || '';
-                                      const parts = [];
-                                      for (let i = 0, len = match.length; i < len; i += 4) {
-                                        parts.push(match.substring(i, i + 4));
-                                      }
-                                      setPaymentCard(parts.length > 0 ? parts.join(' ') : val);
-                                    }} 
-                                    maxLength={19}
-                                    className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 font-medium font-mono"
-                                  />
-                                </div>
+                                <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">CVV Security</label>
+                                <input 
+                                  required 
+                                  type="password" 
+                                  placeholder="•••" 
+                                  value={paymentCvv} 
+                                  onChange={(e) => setPaymentCvv(e.target.value.replace(/[^0-9]/g, ''))} 
+                                  maxLength={3}
+                                  className="p-2.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 font-medium font-mono text-center"
+                                />
                               </div>
-
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="flex flex-col gap-1">
-                                  <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Expiry Date</label>
-                                  <input 
-                                    required 
-                                    type="text" 
-                                    placeholder="MM/YY" 
-                                    value={paymentExpiry} 
-                                    onChange={(e) => {
-                                      const val = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-                                      setPaymentExpiry(val.length >= 2 ? val.slice(0, 2) + '/' + val.slice(2, 4) : val);
-                                    }} 
-                                    maxLength={5}
-                                    className="p-2.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 font-medium font-mono text-center"
-                                  />
-                                </div>
-
-                                <div className="flex flex-col gap-1">
-                                  <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">CVV Security</label>
-                                  <input 
-                                    required 
-                                    type="password" 
-                                    placeholder="•••" 
-                                    value={paymentCvv} 
-                                    onChange={(e) => setPaymentCvv(e.target.value.replace(/[^0-9]/g, ''))} 
-                                    maxLength={3}
-                                    className="p-2.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 font-medium font-mono text-center"
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="mt-3 flex flex-col gap-2">
-                                <button 
-                                  type="submit" 
-                                  className="w-full py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5"
-                                >
-                                  <Lock size={12} />
-                                  <span>Pay ₹{(cartOrder.price * 1.025).toFixed(2)} Securely</span>
-                                </button>
-                                <button 
-                                  type="button" 
-                                  onClick={() => setPaymentStep(1)}
-                                  className="w-full py-2.5 border border-[var(--border-color)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-bold text-xs rounded-xl cursor-pointer transition-all active:scale-95 text-center font-heading"
-                                >
-                                  Back to Cart
-                                </button>
-                              </div>
-                            </form>
-                          </div>
-                        )}
-
-                        {/* Sub-step 3: Success Screen */}
-                        {paymentStep === 3 && (
-                          <div className="p-6 text-center max-w-md mx-auto w-full animate-scale-in relative overflow-hidden flex flex-col items-center">
-                            {/* Confetti Animation Background */}
-                            <div className="absolute inset-0 pointer-events-none">
-                              <div className="absolute top-10 left-10 w-2.5 h-2.5 bg-pink-500 rounded-full animate-confetti"></div>
-                              <div className="absolute top-20 right-10 w-3 h-3 bg-purple-500 rounded-full animate-confetti" style={{ animationDelay: '0.3s' }}></div>
-                              <div className="absolute top-5 left-1/2 w-2 h-2 bg-yellow-500 rounded-full animate-confetti" style={{ animationDelay: '0.6s' }}></div>
-                              <div className="absolute top-32 left-1/4 w-3 h-3 bg-blue-500 rounded-full animate-confetti" style={{ animationDelay: '0.1s' }}></div>
-                              <div className="absolute top-24 right-1/4 w-2 h-2 bg-emerald-500 rounded-full animate-confetti" style={{ animationDelay: '0.8s' }}></div>
                             </div>
 
-                            <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center text-2xl mb-4 shadow-inner animate-bounce">
-                              ✓
-                            </div>
-                            
-                            <h3 className="font-extrabold text-sm uppercase tracking-wider font-heading text-[var(--text-primary)]">Order Placed Successfully!</h3>
-                            <p className="text-[9.5px] text-[var(--text-muted)] font-bold font-mono mt-1 bg-slate-100 dark:bg-slate-900 px-3 py-1 rounded border border-[var(--border-color)]">
-                              ORDER ID: #TSEC-\7306
-                            </p>
-                            
-                            <p className="text-[11px] text-[var(--text-secondary)] font-semibold leading-relaxed mt-4 max-w-xs">
-                              Thank you! Your payment is authorized. Our expert writers have been assigned to your homework order. Loyalty coins have been credited to your account.
-                            </p>
-
-                            <div className="mt-6 flex flex-col gap-2 w-full">
+                            <div className="mt-3 flex flex-col gap-2">
+                              <button 
+                                type="submit" 
+                                className="w-full py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                              >
+                                <Lock size={12} />
+                                <span>Pay ₹{(cartOrder.price * 1.025).toFixed(2)} Securely</span>
+                              </button>
                               <button 
                                 type="button" 
-                                onClick={() => {
-                                  setPaymentStep(1);
-                                  setCartOrder(null);
-                                  setAssignmentSubject('');
-                                  setAssignmentPages(1);
-                                  setAssignmentFiles([]);
-                                  setAssignmentDeadline('');
-                                  setManualSubject('');
-                                  setManualPages(1);
-                                  setManualFiles([]);
-                                  setManualDeadline('');
-                                  setPaymentCard('');
-                                  setPaymentExpiry('');
-                                  setPaymentCvv('');
-                                  setActiveAccordion('assignment');
-                                }}
-                                className="w-full py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center font-heading"
+                                onClick={() => setPaymentStep(1)}
+                                className="w-full py-2.5 border border-[var(--border-color)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-bold text-xs rounded-xl cursor-pointer transition-all active:scale-95 text-center font-heading"
                               >
-                                Create New Order
+                                Back to Cart
                               </button>
                             </div>
+                          </form>
+                        </div>
+                      )}
+
+                      {/* Sub-step 3: Success Screen */}
+                      {paymentStep === 3 && (
+                        <div className="p-6 text-center max-w-md mx-auto w-full animate-scale-in relative overflow-hidden flex flex-col items-center">
+                          {/* Confetti Animation Background */}
+                          <div className="absolute inset-0 pointer-events-none">
+                            <div className="absolute top-10 left-10 w-2.5 h-2.5 bg-pink-500 rounded-full animate-confetti"></div>
+                            <div className="absolute top-20 right-10 w-3 h-3 bg-purple-500 rounded-full animate-confetti" style={{ animationDelay: '0.3s' }}></div>
+                            <div className="absolute top-5 left-1/2 w-2 h-2 bg-yellow-500 rounded-full animate-confetti" style={{ animationDelay: '0.6s' }}></div>
+                            <div className="absolute top-32 left-1/4 w-3 h-3 bg-blue-500 rounded-full animate-confetti" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="absolute top-24 right-1/4 w-2 h-2 bg-emerald-500 rounded-full animate-confetti" style={{ animationDelay: '0.8s' }}></div>
                           </div>
-                        )}
 
-                      </div>
+                          <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center text-2xl mb-4 shadow-inner animate-bounce">
+                            ✓
+                          </div>
+                          
+                          <h3 className="font-extrabold text-sm uppercase tracking-wider font-heading text-[var(--text-primary)]">Order Placed Successfully!</h3>
+                          <p className="text-[9.5px] text-[var(--text-muted)] font-bold font-mono mt-1 bg-slate-100 dark:bg-slate-900 px-3 py-1 rounded border border-[var(--border-color)]">
+                            ORDER ID: #TSEC-\8996
+                          </p>
+                          
+                          <p className="text-[11px] text-[var(--text-secondary)] font-semibold leading-relaxed mt-4 max-w-xs">
+                            Thank you! Your payment is authorized. Our expert writers have been assigned to your homework order. Loyalty coins have been credited to your account.
+                          </p>
+
+                          <div className="mt-6 flex flex-col gap-2 w-full">
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                setPaymentStep(1);
+                                setCartOrder(null);
+                                setAssignmentSubject('');
+                                setAssignmentPages(1);
+                                setAssignmentFiles([]);
+                                setAssignmentDeadline('');
+                                setManualSubject('');
+                                setManualPages(1);
+                                setManualFiles([]);
+                                setManualDeadline('');
+                                setPaymentCard('');
+                                setPaymentExpiry('');
+                                setPaymentCvv('');
+                                setActiveAccordion('assignment');
+                              }}
+                              className="w-full py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center font-heading"
+                            >
+                              Create New Order
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                     </div>
                   </div>
                 </div>
-
-              </div>
-
-              {/* RIGHT SECTION: User Dashboard */}
-              <div className="lg:col-span-5 lg:sticky lg:top-24 flex flex-col gap-6 text-left">
-                
-                {/* Card 1: User Profile & Loyalty Section */}
-                <div className="tsec-dashboard-card p-6 flex flex-col gap-6 bg-white dark:bg-slate-950 border border-[var(--border-color)] rounded-[20px] shadow-sm">
-                  
-                  {/* User Information Header */}
-                  <div className="flex items-center gap-3.5 border-b border-[var(--border-color)] pb-4 justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-sm flex items-center justify-center shadow-md font-sans">
-                        {user ? user.name.slice(0, 2).toUpperCase() : 'AM'}
-                      </div>
-                      <div className="text-left font-sans">
-                        <p className="text-[11px] text-[var(--text-muted)] font-medium font-sans">👋 Welcome Back,</p>
-                        <h3 className="text-sm font-extrabold text-[var(--text-primary)] leading-tight font-sans mt-0.5">
-                          {user ? user.name : 'Anjali Mishra'}
-                        </h3>
-                      </div>
-                    </div>
-
-                    {/* Dynamic membership badge */}
-                    <div className="text-right font-sans">
-                      {loyaltyCoins >= 30 && loyaltyCoins <= 49 && (
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20 font-sans shadow-sm">🟫 Bronze Club</span>
-                      )}
-                      {loyaltyCoins >= 50 && loyaltyCoins <= 69 && (
-                        <span className="text-[10px] font-bold text-slate-500 bg-slate-500/10 px-3 py-1.5 rounded-full border border-slate-500/20 font-sans shadow-sm">🥈 Silver Club</span>
-                      )}
-                      {loyaltyCoins >= 70 && loyaltyCoins <= 79 && (
-                        <span className="text-[10px] font-bold text-yellow-600 bg-yellow-500/10 px-3 py-1.5 rounded-full border border-yellow-500/20 font-sans shadow-sm">🥇 Gold Club</span>
-                      )}
-                      {loyaltyCoins >= 80 && loyaltyCoins <= 99 && (
-                        <span className="text-[10px] font-bold text-purple-600 bg-purple-500/10 px-3 py-1.5 rounded-full border border-purple-500/20 font-sans shadow-sm">💎 Platinum Club</span>
-                      )}
-                      {loyaltyCoins >= 100 && (
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 font-sans shadow-sm">🏆 Elite Member</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Badge Unlock Callout Banner */}
-                  {loyaltyCoins < 30 && (
-                    <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-500/15 rounded-xl text-center text-[10px] font-semibold text-blue-600 dark:text-blue-400 font-sans animate-pulse">
-                      ✨ Earn 30 coins to unlock Bronze Club.
-                    </div>
-                  )}
-
-                  {/* Loyalty Progress Card */}
-                  <div className="flex flex-col gap-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10.5px] font-bold text-[var(--text-secondary)] font-sans flex items-center gap-1.5">
-                        <span>🪙</span>
-                        <span>Loyalty Coins</span>
-                      </span>
-                      <span className="text-xs font-bold text-[var(--text-primary)] font-mono">{loyaltyCoins} / 100 Coins</span>
-                    </div>
-
-                    {/* Smooth Animated Progress Bar */}
-                    <div className="progress-bar-container h-2.5">
-                      <div 
-                        className="progress-bar-fill bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-500 ease-out" 
-                        style={{ width: `${Math.min(loyaltyCoins, 100)}%` }}
-                      ></div>
-                    </div>
-
-                    {/* Progress Range ticks */}
-                    <div className="flex justify-between text-[9px] font-mono text-[var(--text-muted)] font-semibold px-0.5">
-                      <span>0</span>
-                      <span>100</span>
-                    </div>
-
-                    {/* Helper Text */}
-                    <div className="border-t border-[var(--border-color)] pt-3.5 mt-1 flex flex-col gap-1 text-left font-sans">
-                      <p className="text-[10px] text-[var(--text-muted)] font-semibold flex items-center gap-1">
-                        <span>ℹ️</span>
-                        <span>Earn 10 coins for every completed order.</span>
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5 text-[9px] font-bold text-indigo-600 bg-indigo-500/10 px-2 py-0.5 rounded w-max font-sans">
-                        <span>1 Order = 10 Coins</span>
-                        <span>|</span>
-                        <span>10 Orders = 100 Coins</span>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Card 2: Upcoming Deadlines Collapsible Card */}
-                <div className="tsec-dashboard-card p-6 flex flex-col bg-white dark:bg-slate-950 border border-[var(--border-color)] rounded-[20px] shadow-sm">
-                  
-                  {/* Collapsible Accordion Header */}
-                  <button
-                    type="button"
-                    onClick={() => setDeadlinesExpanded(!deadlinesExpanded)}
-                    className="w-full flex justify-between items-center text-left font-extrabold text-[12px] text-[var(--text-primary)] uppercase tracking-wider font-heading cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>⏳</span>
-                      <span>Upcoming Deadlines</span>
-                    </div>
-                    <ChevronDown size={14} className={`transition-transform duration-300 ${deadlinesExpanded ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {/* Collapsible Accordion Wrapper */}
-                  <div className={`accordion-wrapper ${deadlinesExpanded ? 'open' : ''}`}>
-                    <div className="accordion-inner">
-                      <div className="flex flex-col gap-3.5 mt-4 pt-3.5 border-t border-[var(--border-color)]">
-                        {(() => {
-                          const activeDeadlines = dashboardDeadlines
-                            .filter(item => item.status !== 'Completed')
-                            .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-
-                          if (activeDeadlines.length === 0) {
-                            return (
-                              <div className="text-center py-8 flex flex-col items-center justify-center gap-2 font-sans">
-                                <span className="text-2xl">🎉</span>
-                                <h4 className="text-xs font-extrabold text-[var(--text-primary)]">No active deadlines.</h4>
-                                <p className="text-[10px] text-[var(--text-muted)] font-medium">You're all caught up!</p>
-                              </div>
-                            );
-                          }
-
-                          return activeDeadlines.map(d => {
-                            const diff = new Date(d.dueDate).getTime() - currentTime;
-                            
-                            // Live Countdown calculations
-                            let remainingText = "";
-                            let badgeClass = "";
-                            let statusText = "";
-
-                            if (diff <= 0) {
-                              remainingText = "Overdue";
-                              badgeClass = "text-red-700 bg-red-700/10 border border-red-700/20";
-                              statusText = "🔴 Overdue";
-                            } else {
-                              const secs = Math.floor(diff / 1000);
-                              const mins = Math.floor(secs / 60);
-                              const hours = Math.floor(mins / 60);
-                              const days = Math.floor(hours / 24);
-
-                              if (days > 0) {
-                                remainingText = `${days}d ${hours % 24}h ${mins % 60}m left`;
-                              } else if (hours > 0) {
-                                remainingText = `${hours}h ${mins % 60}m ${secs % 60}s left`;
-                              } else {
-                                remainingText = `${mins}m ${secs % 60}s left`;
-                              }
-
-                              // Status badge color coding based on diff
-                              if (diff < 24 * 3600 * 1000) {
-                                badgeClass = "text-red-600 bg-red-500/10 border border-red-500/20";
-                                statusText = "🔴 Due Today";
-                              } else if (diff < 48 * 3600 * 1000) {
-                                badgeClass = "text-amber-600 bg-amber-500/10 border border-amber-500/20";
-                                statusText = "🟠 Tomorrow";
-                              } else if (diff < 72 * 3600 * 1000) {
-                                badgeClass = "text-yellow-600 bg-yellow-500/10 border border-yellow-500/20";
-                                statusText = "🟡 2 Days Left";
-                              } else {
-                                badgeClass = "text-emerald-600 bg-emerald-500/10 border border-emerald-500/20";
-                                statusText = "🟢 On Track";
-                              }
-                            }
-
-                            return (
-                              <div key={d.id} className="p-4 bg-slate-50/50 dark:bg-slate-900/10 border border-[var(--border-color)] hover:border-[var(--border-hover)] rounded-2xl flex flex-col gap-3 transition-all font-sans">
-                                
-                                {/* Subject and Status Badge */}
-                                <div className="flex justify-between items-start gap-2">
-                                  <div className="text-left font-sans">
-                                    <h4 className="text-xs font-black text-[var(--text-primary)] flex items-center gap-1.5">
-                                      <span>📘</span>
-                                      <span>{d.subject}</span>
-                                    </h4>
-                                    {d.name && <p className="text-[10px] font-semibold text-[var(--text-muted)] mt-0.5">{d.name}</p>}
-                                  </div>
-                                  <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full font-sans ${badgeClass}`}>
-                                    {statusText}
-                                  </span>
-                                </div>
-
-                                {/* Order Details Grid */}
-                                <div className="grid grid-cols-2 gap-y-2 gap-x-3 text-[10px] font-semibold text-[var(--text-secondary)] border-t border-[var(--border-color)] pt-3 font-sans">
-                                  <div className="flex items-center gap-1.5">
-                                    <span>🆔</span>
-                                    <span>{d.orderId}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <span>📅</span>
-                                    <span className="font-mono">{new Date(d.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
-                                  </div>
-                                  <div className="col-span-2 flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-500/5 p-2 rounded-xl border border-indigo-500/10">
-                                    <span>⏰</span>
-                                    <span className="font-mono">{remainingText}</span>
-                                  </div>
-                                </div>
-
-                              </div>
-                            );
-                          });
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-
               </div>
 
             </div>
+
           </div>
         )}
 
