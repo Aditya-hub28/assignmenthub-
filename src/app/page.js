@@ -12,7 +12,7 @@ import {
   ChevronRight, MessageSquare, AlertCircle, Eye, ShieldAlert,
   ChevronDown, ZoomIn, ZoomOut, Maximize2, Share2, Sparkles, Trophy,
   ThumbsUp, ExternalLink, HelpCircle, CheckSquare, Settings, Lock,
-  Flame, GraduationCap, CreditCard
+  Flame, GraduationCap, CreditCard, User
 } from 'lucide-react';
 import { dbMock } from '../lib/supabase';
 
