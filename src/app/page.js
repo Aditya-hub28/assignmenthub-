@@ -12,9 +12,40 @@ import {
   ChevronRight, MessageSquare, AlertCircle, Eye, ShieldAlert,
   ChevronDown, ZoomIn, ZoomOut, Maximize2, Share2, Sparkles, Trophy,
   ThumbsUp, ExternalLink, HelpCircle, CheckSquare, Settings, Lock,
-  Flame, GraduationCap, CreditCard, User
+  Flame, GraduationCap, CreditCard, User, ListChecks
 } from 'lucide-react';
 import { dbMock } from '../lib/supabase';
+
+// Pure external helper functions to satisfy ESLint render purity
+const generateId = () => Date.now();
+
+const pushNotificationHelper = (setNotifications, title, desc) => {
+  const newNotif = {
+    id: Date.now(),
+    title,
+    desc,
+    time: 'Just now',
+    read: false
+  };
+  setNotifications(prev => [newNotif, ...prev]);
+};
+
+const triggerConfettiHelper = (setParticles) => {
+  const newParticles = [];
+  for (let i = 0; i < 30; i++) {
+    newParticles.push({
+      id: Math.random(),
+      left: Math.random() * 100 + '%',
+      top: Math.random() * 20 + 80 + '%',
+      color: ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6'][Math.floor(Math.random() * 5)],
+      delay: Math.random() * 0.5 + 's',
+      duration: Math.random() * 1.5 + 1 + 's',
+      size: Math.random() * 8 + 4 + 'px'
+    });
+  }
+  setParticles(newParticles);
+  setTimeout(() => setParticles([]), 2500);
+};
 
 export default function Home() {
   // App General Database State
@@ -46,51 +77,14 @@ export default function Home() {
   const [paymentExpiry, setPaymentExpiry] = useState('');
   const [paymentCvv, setPaymentCvv] = useState('');
   const [paymentName, setPaymentName] = useState('Anjali Mishra');
-  const [currentTime, setCurrentTime] = useState(Date.now());
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [rewardModalOpen, setRewardModalOpen] = useState(false);
   const [hasSeenRewardModal, setHasSeenRewardModal] = useState(false);
   const [deadlinesExpanded, setDeadlinesExpanded] = useState(true);
 
-  const [dashboardDeadlines, setDashboardDeadlines] = useState([
-    { 
-      id: 1, 
-      name: "DBMS Lab Manual", 
-      subject: "Database Management", 
-      orderId: "TSEC-3891",
-      dueDate: new Date(Date.now() + 4 * 3600 * 1000).toISOString(), // 4 hours from now
-      status: "Active" 
-    },
-    { 
-      id: 2, 
-      name: "Applied Physics Lab 3", 
-      subject: "Applied Physics", 
-      orderId: "TSEC-9218",
-      dueDate: new Date(Date.now() + 28 * 3600 * 1000).toISOString(), // 28 hours from now
-      status: "Active" 
-    },
-    { 
-      id: 3, 
-      name: "Maths Tutorial 5", 
-      subject: "Applied Mathematics", 
-      orderId: "TSEC-5541",
-      dueDate: new Date(Date.now() + 52 * 3600 * 1000).toISOString(), // 52 hours from now
-      status: "Active" 
-    },
-    { 
-      id: 4, 
-      name: "Mechanics Sheet 4", 
-      subject: "Engineering Mechanics", 
-      orderId: "TSEC-1290",
-      dueDate: new Date(Date.now() - 24 * 3600 * 1000).toISOString(), // completed
-      status: "Completed" 
-    }
-  ]);
+  const [dashboardDeadlines, setDashboardDeadlines] = useState([]);
 
-  const [dashboardActiveOrders, setDashboardActiveOrders] = useState([
-    { id: "TSEC-3891", subject: "Applied Physics", pages: 5, status: "In Progress" },
-    { id: "TSEC-9218", subject: "Basic Electrical", pages: 12, status: "Under Review" },
-    { id: "TSEC-1290", subject: "Professional Communication", pages: 3, status: "Delivered" }
-  ]);
+  const [dashboardActiveOrders, setDashboardActiveOrders] = useState([]);
 
   // Live countdown update ticker
   useEffect(() => {
@@ -103,8 +97,11 @@ export default function Home() {
   // Check for reward popup trigger at 100 coins
   useEffect(() => {
     if (loyaltyCoins >= 100 && !hasSeenRewardModal) {
-      setRewardModalOpen(true);
-      setHasSeenRewardModal(true);
+      const t = setTimeout(() => {
+        setRewardModalOpen(true);
+        setHasSeenRewardModal(true);
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, [loyaltyCoins, hasSeenRewardModal]);
 
@@ -134,6 +131,41 @@ export default function Home() {
   const [searchDept, setSearchDept] = useState('all');
   const [searchType, setSearchType] = useState('all');
   const [searchSort, setSearchSort] = useState('newest');
+  const [activeSubmissionsTab, setActiveSubmissionsTab] = useState('all');
+
+  // Reward Hub States
+  const [rewardCoins, setRewardCoins] = useState(0);
+  const [rewardLevel, setRewardLevel] = useState(1);
+  const [rewardStreak, setRewardStreak] = useState(0);
+  const [rewardsRedeemedCount, setRewardsRedeemedCount] = useState(0);
+  const [rewardProgress, setRewardProgress] = useState(0);
+  const [missionLogin, setMissionLogin] = useState(false);
+  const [missionAssignment, setMissionAssignment] = useState(false);
+  const [missionDeadline, setMissionDeadline] = useState(false);
+  const [missionRate, setMissionRate] = useState(false);
+  const [coinHistory, setCoinHistory] = useState([]);
+  const [particles, setParticles] = useState([]);
+
+  const triggerConfetti = () => {
+    triggerConfettiHelper(setParticles);
+  };
+
+  const addCoins = (amount, sourceName) => {
+    setRewardCoins(prev => {
+      const newCoins = prev + amount;
+      const prevRewards = Math.floor(prev / 500);
+      const newRewards = Math.floor(newCoins / 500);
+      if (newRewards > prevRewards) {
+        pushNotification("Reward Card Earned! 🎁", `You reached ${newRewards * 500} coins and unlocked a new Reward Card!`);
+        setTimeout(() => triggerConfetti(), 100);
+      }
+      return newCoins;
+    });
+    setCoinHistory(prev => [
+      { id: generateId(), type: 'earn', title: sourceName, amount: amount, time: 'Today' },
+      ...prev
+    ]);
+  };
 
   // Directory Browser State
   const [browsePath, setBrowsePath] = useState([]);
@@ -194,6 +226,16 @@ export default function Home() {
   useEffect(() => {
     async function loadData() {
       try {
+        if (typeof window !== "undefined" && !localStorage.getItem('tsec_cleaned_v3')) {
+          localStorage.removeItem('tsec_contributors');
+          localStorage.removeItem('tsec_user');
+          localStorage.removeItem('tsec_resources');
+          localStorage.removeItem('tsec_pending');
+          localStorage.setItem('tsec_cleaned_v3', 'true');
+          window.location.reload();
+          return;
+        }
+
         const resources = await dbMock.getResources();
         const pending = await dbMock.getPending();
         const dates = await dbMock.getDeadlines();
@@ -212,22 +254,41 @@ export default function Home() {
 
           if (localBook) setBookmarks(JSON.parse(localBook));
           if (localDown) setDownloads(JSON.parse(localDown));
+
+          const localOrders = localStorage.getItem('tsec_active_orders');
+          const localDeadlines = localStorage.getItem('tsec_deadlines');
+          if (localOrders) setDashboardActiveOrders(JSON.parse(localOrders));
+          if (localDeadlines) setDashboardDeadlines(JSON.parse(localDeadlines));
+
           if (localUser) {
-            setUser(JSON.parse(localUser));
+            const parsed = JSON.parse(localUser);
+            if (parsed.name.toLowerCase() === 'anjali mishra' && (parsed.orders !== 0 || parsed.coins !== 0 || parsed.rank !== 0 || parsed.completed !== 0)) {
+              parsed.coins = 0;
+              parsed.level = 1;
+              parsed.orders = 0;
+              parsed.streak = 0;
+              parsed.rank = 0;
+              parsed.completed = 0;
+              parsed.delivered = 0;
+              localStorage.setItem('tsec_user', JSON.stringify(parsed));
+            }
+            setUser(parsed);
           } else {
             const defaultUser = {
               name: 'Anjali Mishra',
               email: 'anjali@gmail.com',
               role: 'writer',
-              coins: 2450,
-              level: 18,
-              orders: 56,
-              rating: 4.9,
-              streak: 15,
-              rank: 18,
-              completed: 124,
-              delivered: 98,
-              onTime: 97
+              coins: 0,
+              level: 1,
+              orders: 0,
+              rating: 5.0,
+              streak: 0,
+              rank: 0,
+              followers: 0,
+              following: 0,
+              completed: 0,
+              delivered: 0,
+              onTime: 100
             };
             setUser(defaultUser);
             localStorage.setItem('tsec_user', JSON.stringify(defaultUser));
@@ -278,14 +339,7 @@ export default function Home() {
 
   // Push notification helper
   const pushNotification = (title, desc) => {
-    const newNotif = {
-      id: Date.now(),
-      title,
-      desc,
-      time: 'Just now',
-      read: false
-    };
-    setNotifications(prev => [newNotif, ...prev]);
+    pushNotificationHelper(setNotifications, title, desc);
   };
 
   // Auth Operations
@@ -391,9 +445,18 @@ export default function Home() {
       date: new Date().toISOString().split('T')[0]
     };
 
-    activeDetail.comments = [...(activeDetail.comments || []), newComment];
-    setDb([...db]);
-    dbMock.saveResources(db);
+    const updatedDb = db.map(item => {
+      if (item.id === activeDetail.id) {
+        const nextComments = [...(item.comments || []), newComment];
+        const updatedItem = { ...item, comments: nextComments };
+        setActiveDetail(updatedItem);
+        return updatedItem;
+      }
+      return item;
+    });
+
+    setDb(updatedDb);
+    dbMock.saveResources(updatedDb);
     setCommentText('');
     pushNotification("Comment Posted", "Your doubt has been posted.");
   };
@@ -410,14 +473,20 @@ export default function Home() {
       tags: reviewTags
     };
 
-    const nextReviews = [newReview, ...(activeDetail.reviews || [])];
-    activeDetail.reviews = nextReviews;
+    const updatedDb = db.map(item => {
+      if (item.id === activeDetail.id) {
+        const nextReviews = [newReview, ...(item.reviews || [])];
+        const totalStars = nextReviews.reduce((sum, r) => sum + r.stars, 0);
+        const rating = parseFloat((totalStars / nextReviews.length).toFixed(1));
+        const updatedItem = { ...item, reviews: nextReviews, rating };
+        setActiveDetail(updatedItem);
+        return updatedItem;
+      }
+      return item;
+    });
 
-    const totalStars = nextReviews.reduce((sum, r) => sum + r.stars, 0);
-    activeDetail.rating = parseFloat((totalStars / nextReviews.length).toFixed(1));
-
-    setDb([...db]);
-    dbMock.saveResources(db);
+    setDb(updatedDb);
+    dbMock.saveResources(updatedDb);
     
     setReviewContent('');
     setReviewStars(5);
@@ -436,7 +505,7 @@ export default function Home() {
     const desc = e.target.desc.value;
 
     const newUpload = {
-      id: Date.now(),
+      id: generateId(),
       title,
       subject,
       sem,
@@ -479,6 +548,51 @@ export default function Home() {
     const nextPending = pendingUploads.filter(p => p.id !== id);
     setPendingUploads(nextPending);
     dbMock.savePending(nextPending);
+
+    // Update real-time contributors standings
+    const contributorName = item.uploadedBy || "Guest Contributor";
+    let updatedContributors = [...contributors];
+    const existingIdx = updatedContributors.findIndex(c => c.name.toLowerCase() === contributorName.toLowerCase());
+    
+    if (existingIdx !== -1) {
+      updatedContributors[existingIdx] = {
+        ...updatedContributors[existingIdx],
+        uploads: updatedContributors[existingIdx].uploads + 1,
+        points: updatedContributors[existingIdx].points + 25
+      };
+    } else {
+      updatedContributors.push({
+        rank: 99,
+        name: contributorName,
+        uploads: 1,
+        downloads: 0,
+        points: 25
+      });
+    }
+
+    // Sort by points descending
+    updatedContributors.sort((a, b) => b.points - a.points);
+    // Recalculate ranks
+    updatedContributors = updatedContributors.map((c, index) => ({
+      ...c,
+      rank: index + 1
+    }));
+
+    setContributors(updatedContributors);
+    dbMock.saveContributors(updatedContributors);
+
+    // Sync logged-in user profile stats if they are the uploader
+    if (user && user.name.toLowerCase() === contributorName.toLowerCase()) {
+      const userRankInList = updatedContributors.find(c => c.name.toLowerCase() === user.name.toLowerCase())?.rank || user.rank;
+      const updatedUser = {
+        ...user,
+        coins: (user.coins !== undefined ? user.coins : 0) + 50,
+        rank: userRankInList,
+        completed: (user.completed || 0) + 1
+      };
+      setUser(updatedUser);
+      localStorage.setItem('tsec_user', JSON.stringify(updatedUser));
+    }
 
     setContributionPoints(prev => prev + 25);
     pushNotification("Upload Approved", `'${item.title}' is now public!`);
@@ -672,7 +786,7 @@ int main() {
     if (!deadlineTitle || !deadlineSub || !deadlineDate) return;
 
     const newDate = {
-      id: Date.now(),
+      id: generateId(),
       title: deadlineTitle,
       subject: deadlineSub,
       date: deadlineDate
@@ -886,20 +1000,6 @@ int main() {
             {user ? (
               <div className="flex items-center gap-3 relative">
                 
-                {/* Coins indicator */}
-                <div className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-secondary)] text-[10px] font-bold text-[var(--text-secondary)] select-none shadow-sm">
-                  <span>🪙</span>
-                  <span className="text-[var(--text-primary)] font-black">{(user.coins !== undefined ? user.coins : 120).toLocaleString()}</span>
-                  <span>Coins</span>
-                </div>
-
-                {/* Streak indicator */}
-                <div className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-secondary)] text-[10px] font-bold text-[var(--text-secondary)] select-none shadow-sm">
-                  <span>🔥</span>
-                  <span className="text-amber-500 font-black">{user.streak || '15'}</span>
-                  <span>Streak</span>
-                </div>
-
                 {/* Avatar Button */}
                 <div className="relative">
                   <button 
@@ -940,66 +1040,89 @@ int main() {
                             <hr className="border-[var(--border-color)]" />
 
                             {/* Writer Stats */}
-                            <div className="grid grid-cols-2 gap-2 text-[10px] font-bold py-1 bg-[var(--bg-secondary)]/30 rounded-xl p-2.5 border border-[var(--border-color)]/50">
-                              <div className="flex items-center gap-1.5">
-                                <span>🪙</span>
-                                <span className="text-[var(--text-muted)] font-medium">Coins:</span>
-                                <span className="text-[var(--text-primary)] ml-auto">{(user.coins !== undefined ? user.coins : 2450).toLocaleString()}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span>📈</span>
-                                <span className="text-[var(--text-muted)] font-medium">Level:</span>
-                                <span className="text-[var(--text-primary)] ml-auto">{user.level || 18}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span>📝</span>
-                                <span className="text-[var(--text-muted)] font-medium">Orders:</span>
-                                <span className="text-[var(--text-primary)] ml-auto">{user.orders || 56}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span>⭐</span>
-                                <span className="text-[var(--text-muted)] font-medium">Rating:</span>
-                                <span className="text-[var(--text-primary)] ml-auto">{user.rating || 4.9}</span>
-                              </div>
+                            <div className="grid grid-cols-2 gap-2 p-2 bg-[var(--bg-secondary)]/30 rounded-xl border border-[var(--border-color)]/50">
+                              <button 
+                                onClick={() => { setActiveTab('rewards'); setAvatarDropdownOpen(false); }}
+                                className="flex items-center gap-2 cursor-pointer hover:bg-[var(--bg-secondary)] hover:text-sky-500 p-1.5 rounded-lg transition-all text-left font-bold"
+                              >
+                                <span className="text-lg">🪙</span>
+                                <span className="text-[var(--text-primary)] font-bold text-[11px] font-sans">Coins</span>
+                              </button>
+                              <button 
+                                onClick={() => { setActiveTab('leaderboard'); setAvatarDropdownOpen(false); }}
+                                className="flex items-center gap-2 cursor-pointer hover:bg-[var(--bg-secondary)] hover:text-sky-500 p-1.5 rounded-lg transition-all text-left font-bold"
+                              >
+                                <span className="text-lg">📈</span>
+                                <span className="text-[var(--text-primary)] font-bold text-[11px] font-sans">Level</span>
+                              </button>
+                              <button 
+                                onClick={() => { setActiveTab('dashboard'); setAvatarDropdownOpen(false); }}
+                                className="flex items-center gap-2 cursor-pointer hover:bg-[var(--bg-secondary)] hover:text-sky-500 p-1.5 rounded-lg transition-all text-left font-bold"
+                              >
+                                <span className="text-lg">📝</span>
+                                <span className="text-[var(--text-primary)] font-bold text-[11px] font-sans">Orders</span>
+                              </button>
+                              <button 
+                                onClick={() => { setActiveTab('profile'); setAvatarDropdownOpen(false); }}
+                                className="flex items-center gap-2 cursor-pointer hover:bg-[var(--bg-secondary)] hover:text-sky-500 p-1.5 rounded-lg transition-all text-left font-bold"
+                              >
+                                <span className="text-lg">⭐</span>
+                                <span className="text-[var(--text-primary)] font-bold text-[11px] font-sans">Rating</span>
+                              </button>
                             </div>
 
                             <hr className="border-[var(--border-color)]" />
 
                             {/* Writer Links */}
-                            <div className="flex flex-col gap-1 font-bold">
+                            <div className="flex flex-col gap-1.5 font-bold">
                               <button 
                                 onClick={() => { setActiveTab('profile'); setAvatarDropdownOpen(false); }}
                                 className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
                               >
-                                <span className="flex items-center gap-2">👤 My Profile</span>
+                                <span className="flex items-center gap-3">
+                                  <span className="text-base select-none">👤</span>
+                                  <span>My Profile</span>
+                                </span>
                                 <span className="text-[var(--text-muted)] text-[10px]">→</span>
                               </button>
                               <button 
                                 onClick={() => { setActiveTab('dashboard'); setAvatarDropdownOpen(false); }}
                                 className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
                               >
-                                <span className="flex items-center gap-2">📚 My Assignments</span>
+                                <span className="flex items-center gap-3">
+                                  <span className="text-base select-none">📚</span>
+                                  <span>My Assignments</span>
+                                </span>
                                 <span className="text-[var(--text-muted)] text-[10px]">→</span>
                               </button>
                               <button 
-                                onClick={() => { setActiveTab('pricing'); setAvatarDropdownOpen(false); }}
+                                onClick={() => { setActiveTab('rewards'); setAvatarDropdownOpen(false); }}
                                 className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
                               >
-                                <span className="flex items-center gap-2">💰 Wallet</span>
+                                <span className="flex items-center gap-3">
+                                  <span className="text-base select-none">💰</span>
+                                  <span>Wallet</span>
+                                </span>
                                 <span className="text-[var(--text-muted)] text-[10px]">→</span>
                               </button>
                               <button 
                                 onClick={() => { setActiveTab('leaderboard'); setAvatarDropdownOpen(false); }}
                                 className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
                               >
-                                <span className="flex items-center gap-2">🏆 Achievements</span>
+                                <span className="flex items-center gap-3">
+                                  <span className="text-base select-none">🏆</span>
+                                  <span>Achievements</span>
+                                </span>
                                 <span className="text-[var(--text-muted)] text-[10px]">→</span>
                               </button>
                               <button 
                                 onClick={() => { pushNotification("Info", "Settings panel is currently locked."); setAvatarDropdownOpen(false); }}
                                 className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
                               >
-                                <span className="flex items-center gap-2">⚙️ Settings</span>
+                                <span className="flex items-center gap-3">
+                                  <span className="text-base select-none">⚙️</span>
+                                  <span>Settings</span>
+                                </span>
                                 <span className="text-[var(--text-muted)] text-[10px]">→</span>
                               </button>
                               
@@ -1007,9 +1130,10 @@ int main() {
                               
                               <button 
                                 onClick={() => { handleLogout(); setAvatarDropdownOpen(false); }}
-                                className="w-full flex items-center gap-2 px-2 py-1.5 text-rose-500 hover:bg-rose-500/5 hover:text-rose-600 rounded-lg cursor-pointer text-left font-sans text-xs font-black"
+                                className="w-full flex items-center gap-3 px-2 py-2 text-rose-500 hover:bg-rose-500/5 hover:text-rose-600 rounded-lg cursor-pointer text-left font-sans text-xs font-black"
                               >
-                                🚪 Logout
+                                <span className="text-base select-none">🚪</span>
+                                <span>Logout</span>
                               </button>
                             </div>
                           </div>
@@ -1035,47 +1159,65 @@ int main() {
                             <hr className="border-[var(--border-color)]" />
 
                             {/* Client Links */}
-                            <div className="flex flex-col gap-1 font-bold">
+                            <div className="flex flex-col gap-1.5 font-bold">
                               <button 
                                 onClick={() => { setActiveTab('profile'); setAvatarDropdownOpen(false); }}
                                 className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
                               >
-                                <span className="flex items-center gap-2">👤 My Profile</span>
+                                <span className="flex items-center gap-3">
+                                  <span className="text-base select-none">👤</span>
+                                  <span>My Profile</span>
+                                </span>
                                 <span className="text-[var(--text-muted)] text-[10px]">→</span>
                               </button>
                               <button 
                                 onClick={() => { setActiveTab('dashboard'); setAvatarDropdownOpen(false); }}
                                 className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
                               >
-                                <span className="flex items-center gap-2">📄 My Orders</span>
+                                <span className="flex items-center gap-3">
+                                  <span className="text-base select-none">📄</span>
+                                  <span>My Orders</span>
+                                </span>
                                 <span className="text-[var(--text-muted)] text-[10px]">→</span>
                               </button>
                               <button 
                                 onClick={() => { pushNotification("Chat", "No new messages in inbox."); setAvatarDropdownOpen(false); }}
                                 className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
                               >
-                                <span className="flex items-center gap-2">💬 Messages</span>
+                                <span className="flex items-center gap-3">
+                                  <span className="text-base select-none">💬</span>
+                                  <span>Messages</span>
+                                </span>
                                 <span className="text-[var(--text-muted)] text-[10px]">→</span>
                               </button>
                               <button 
                                 onClick={() => { pushNotification("Wishlist", "Wishlist is currently empty."); setAvatarDropdownOpen(false); }}
                                 className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
                               >
-                                <span className="flex items-center gap-2">❤️ Wishlist</span>
+                                <span className="flex items-center gap-3">
+                                  <span className="text-base select-none">❤️</span>
+                                  <span>Wishlist</span>
+                                </span>
                                 <span className="text-[var(--text-muted)] text-[10px]">→</span>
                               </button>
                               <button 
-                                onClick={() => { setActiveTab('pricing'); setAvatarDropdownOpen(false); }}
+                                onClick={() => { setActiveTab('rewards'); setAvatarDropdownOpen(false); }}
                                 className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
                               >
-                                <span className="flex items-center gap-2">🪙 Wallet</span>
+                                <span className="flex items-center gap-3">
+                                  <span className="text-base select-none">🪙</span>
+                                  <span>Wallet</span>
+                                </span>
                                 <span className="text-[var(--text-muted)] text-[10px]">→</span>
                               </button>
                               <button 
                                 onClick={() => { pushNotification("Info", "Settings panel is currently locked."); setAvatarDropdownOpen(false); }}
                                 className="w-full flex justify-between items-center px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-left font-sans text-xs"
                               >
-                                <span className="flex items-center gap-2">⚙️ Settings</span>
+                                <span className="flex items-center gap-3">
+                                  <span className="text-base select-none">⚙️</span>
+                                  <span>Settings</span>
+                                </span>
                                 <span className="text-[var(--text-muted)] text-[10px]">→</span>
                               </button>
                               
@@ -1083,9 +1225,10 @@ int main() {
                               
                               <button 
                                 onClick={() => { handleLogout(); setAvatarDropdownOpen(false); }}
-                                className="w-full flex items-center gap-2 px-2 py-1.5 text-rose-500 hover:bg-rose-500/5 hover:text-rose-600 rounded-lg cursor-pointer text-left font-sans text-xs font-black"
+                                className="w-full flex items-center gap-3 px-2 py-2 text-rose-500 hover:bg-rose-500/5 hover:text-rose-600 rounded-lg cursor-pointer text-left font-sans text-xs font-black"
                               >
-                                🚪 Logout
+                                <span className="text-base select-none">🚪</span>
+                                <span>Logout</span>
                               </button>
                             </div>
                           </div>
@@ -1693,7 +1836,7 @@ int main() {
                       <h3 className="font-bold text-sm text-sky-500 font-heading tracking-tight flex items-center gap-1.5">
                         <Sparkles size={14}/> AI Semantic Search
                       </h3>
-                      <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">Enter questions or sentences like "Need assignment on thread synchronization".</p>
+                      <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">Enter questions or sentences like &quot;Need assignment on thread synchronization&quot;.</p>
                     </div>
 
                     <div className="flex gap-2">
@@ -1721,7 +1864,7 @@ int main() {
                         </div>
                       ) : aiSearchResults.length === 0 ? (
                         <div className="text-center py-10 border border-dashed border-[var(--border-color)] rounded-xl bg-[var(--bg-secondary)]/20 text-xs text-[var(--text-muted)]">
-                          Type a matching topic context, e.g. "Java threads", "OS", "Graph MST", or "SQL Queries".
+                          Type a matching topic context, e.g. &quot;Java threads&quot;, &quot;OS&quot;, &quot;Graph MST&quot;, or &quot;SQL Queries&quot;.
                         </div>
                       ) : (
                         <div className="flex flex-col gap-2">
@@ -2465,7 +2608,7 @@ int main() {
                         <div className="flex flex-col gap-5">
                           {!cartOrder ? (
                             <div className="text-center py-10 text-xs text-[var(--text-muted)] font-medium">
-                              No order selected. Fill in your Assignment or Manual order details above and click 'Add to Cart'.
+                              No order selected. Fill in your Assignment or Manual order details above and click &apos;Add to Cart&apos;.
                             </div>
                           ) : (
                             <div className="flex flex-col gap-5 animate-fade-in text-left">
@@ -2552,7 +2695,7 @@ int main() {
                                 
                                 // Add to deadlines list
                                 const newDeadline = {
-                                  id: Date.now(),
+                                  id: generateId(),
                                   name: `${cartOrder.type === 'Assignment Order' ? 'Assignment' : 'Manual'} Submission`,
                                   subject: cartOrder.subject,
                                   orderId: newOrder.id,
@@ -2563,6 +2706,17 @@ int main() {
 
                                 // Add 10 loyalty coins (completed order)
                                 setLoyaltyCoins(prev => prev + 10);
+
+                                // Increment user's orders count in real-time
+                                if (user) {
+                                  const updatedUser = {
+                                    ...user,
+                                    orders: (user.orders || 0) + 1
+                                  };
+                                  setUser(updatedUser);
+                                  localStorage.setItem('tsec_user', JSON.stringify(updatedUser));
+                                }
+
                                 setPaymentStep(3); // Go to success step
                                 pushNotification("Payment Confirmed", `Homework matched and added to active orders tracker.`);
                               }, 1000);
@@ -2915,7 +3069,7 @@ int main() {
                   <h3 className="font-bold text-xs mb-3 text-[var(--text-primary)] font-heading">Bookmarked Resources</h3>
                   <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
                     {bookmarks.length === 0 ? (
-                      <p className="text-xs text-[var(--text-muted)] font-medium py-3">You haven't bookmarked any files yet.</p>
+                      <p className="text-xs text-[var(--text-muted)] font-medium py-3">You haven&apos;t bookmarked any files yet.</p>
                     ) : (
                       bookmarks.map(id => {
                         const item = db.find(r => r.id === id);
@@ -2993,12 +3147,402 @@ int main() {
           </div>
         )}
 
+        {activeTab === 'rewards' && (() => {
+          const dynamicRewards = Math.floor(rewardCoins / 500);
+          const currentProgressPercent = Math.floor(((rewardCoins % 500) * 100) / 500);
+          const calculatedLevel = Math.floor(rewardCoins / 500) + 1;
+          const currentProgressVal = rewardCoins % 500;
+          return (
+            <div className="animate-fade-in py-6 max-w-5xl mx-auto px-4 sm:px-6 w-full flex flex-col gap-6 text-left relative">
+              <style>{`
+                @keyframes float {
+                  0%, 100% { transform: translateY(0px) rotate(0deg); }
+                  50% { transform: translateY(-8px) rotate(3deg); }
+                }
+                @keyframes particle-rise {
+                  0% { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
+                  100% { transform: translateY(-100px) scale(0.4) rotate(360deg); opacity: 0; }
+                }
+                .animate-float {
+                  animation: float 3s ease-in-out infinite;
+                }
+                .particle {
+                  position: absolute;
+                  pointer-events: none;
+                  animation: particle-rise 1.5s ease-out forwards;
+                }
+              `}</style>
+
+              {/* Floating coin particles */}
+              {particles.map(p => (
+                <div
+                  key={p.id}
+                  className="particle flex items-center justify-center font-bold text-xs select-none z-50"
+                  style={{
+                    left: p.left,
+                    top: p.top,
+                    color: p.color,
+                    fontSize: p.size,
+                    animationDelay: p.delay,
+                    animationDuration: p.duration
+                  }}
+                >
+                  🪙
+                </div>
+              ))}
+
+              {/* 1. Hero Section */}
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 via-yellow-500 to-amber-600 p-6 sm:p-8 text-white shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 border border-yellow-400/20">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent pointer-events-none"></div>
+
+                <div className="flex-grow flex flex-col gap-3 z-10">
+                  <div className="flex items-center gap-3.5">
+                    <span className="text-4xl animate-float select-none">🪙</span>
+                    <div>
+                      <h1 className="text-3xl sm:text-4xl font-black font-sans leading-none tracking-tight">
+                        {rewardCoins.toLocaleString()} <span className="text-lg font-bold opacity-90">Coins</span>
+                      </h1>
+                      <p className="text-xs font-bold opacity-90 font-mono mt-1">Level {calculatedLevel} • Explorer</p>
+                    </div>
+                  </div>
+
+                  <div className="w-full max-w-sm mt-2 flex flex-col gap-1.5">
+                    <div className="flex justify-between text-[10.5px] font-bold opacity-95">
+                      <span>Progress to Level {calculatedLevel + 1} / Reward Card</span>
+                      <span>{currentProgressPercent}%</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-white/20 overflow-hidden backdrop-blur-sm border border-white/10">
+                      <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${currentProgressPercent}%` }}></div>
+                    </div>
+                    <span className="text-[9px] opacity-75 mt-0.5 font-mono block text-right">{currentProgressVal} / 500 Coins</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 w-full sm:w-auto z-10">
+                  <button 
+                    onClick={() => {
+                      const storeSection = document.getElementById('redeem-store');
+                      if (storeSection) {
+                        storeSection.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    className="flex-1 sm:flex-initial px-5 py-3 rounded-xl bg-white text-amber-600 font-extrabold text-xs shadow-md hover:bg-amber-50 transition-all active:scale-95 cursor-pointer text-center font-heading"
+                  >
+                    Redeem Rewards
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const missionsSection = document.getElementById('daily-missions');
+                      if (missionsSection) {
+                        missionsSection.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    className="flex-1 sm:flex-initial px-5 py-3 rounded-xl bg-amber-700/20 border border-white/30 text-white font-extrabold text-xs hover:bg-amber-700/40 transition-all active:scale-95 cursor-pointer text-center font-heading"
+                  >
+                    Earn More
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Quick Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { title: "Total Coins", value: rewardCoins.toLocaleString(), emoji: "🪙", color: "text-amber-500 bg-amber-500/5 border-amber-500/10" },
+                  { title: "Current Streak", value: `${rewardStreak} Days`, emoji: "🔥", color: "text-rose-500 bg-rose-500/5 border-rose-500/10" },
+                  { title: "Level", value: calculatedLevel.toString(), emoji: "🏆", color: "text-purple-500 bg-purple-500/5 border-purple-500/10" },
+                  { title: "Reward", value: dynamicRewards.toString(), emoji: "🎁", color: "text-emerald-500 bg-emerald-500/5 border-emerald-500/10" }
+                ].map((stat, idx) => (
+                  <div key={idx} className={`p-4 rounded-2xl border bg-white dark:bg-slate-950 flex flex-col gap-1.5 shadow-sm text-left ${stat.color}`}>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-[var(--text-muted)] font-heading">{stat.title}</span>
+                      <span className="text-lg select-none">{stat.emoji}</span>
+                    </div>
+                    <span className="text-lg sm:text-xl font-black text-[var(--text-primary)] leading-tight">{stat.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left Column (8 grid) */}
+                <div className="lg:col-span-8 flex flex-col gap-6">
+                  
+                  {/* 3. How to Earn Coins */}
+                  <div id="daily-missions" className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="font-extrabold text-sm text-[var(--text-primary)]">How to Earn Coins</h4>
+                        <p className="text-[10.5px] text-[var(--text-muted)] mt-0.5 font-bold">Standard Contributor Tasks</p>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-500/20 bg-sky-500/5 text-sky-500 uppercase tracking-wider font-mono">
+                        Earn
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                      {[
+                        { id: 'login', title: 'Login Today', points: 10, done: missionLogin, setDone: setMissionLogin },
+                        { id: 'assignment', title: 'Order 1 Assignment', points: 10, done: missionAssignment, setDone: setMissionAssignment },
+                        { id: 'payment', title: 'Payment', points: 10, done: missionDeadline, setDone: setMissionDeadline },
+                        { id: 'review', title: 'Review Sharing (How we help you)', points: 10, done: missionRate, setDone: setMissionRate }
+                      ].map(mission => (
+                        <div 
+                          key={mission.id} 
+                          onClick={() => {
+                            if (!mission.done) {
+                              mission.setDone(true);
+                              addCoins(mission.points, mission.title);
+                            }
+                          }}
+                          className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
+                            mission.done 
+                              ? 'bg-emerald-500/5 border-emerald-500/20 opacity-80' 
+                              : 'bg-[var(--bg-secondary)]/30 border-[var(--border-color)] hover:border-sky-500/40 hover:bg-[var(--bg-secondary)]/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className={`text-base select-none ${mission.done ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-700'}`}>
+                              {mission.done ? '✅' : '⬜'}
+                            </span>
+                            <span className={`text-xs font-bold ${mission.done ? 'text-[var(--text-primary)] line-through opacity-70' : 'text-[var(--text-primary)]'}`}>
+                              {mission.title}
+                            </span>
+                          </div>
+                          <span className={`text-xs font-extrabold font-mono ${mission.done ? 'text-emerald-500' : 'text-sky-500'}`}>
+                            +{mission.points} Coins
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 5. Redeem Store */}
+                  <div id="redeem-store" className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm">
+                    <div>
+                      <h4 className="font-extrabold text-sm text-[var(--text-primary)]">Redeem Store</h4>
+                      <p className="text-[10.5px] text-[var(--text-muted)] mt-0.5">Use your accumulated coins to purchase exclusive vouchers and benefits.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {[
+                        { title: 'Amazon Voucher', desc: '₹100 Gift Card', price: 500, emoji: '🎁' },
+                        { title: 'Premium Theme', desc: 'Custom developer profile styles', price: 300, emoji: '🎨' },
+                        { title: 'Free Assignment Credit', desc: 'Waiver code for one assignment', price: 1000, emoji: '📝' },
+                        { title: 'Exclusive Badge', desc: 'Explorer gold contributor badge', price: 250, emoji: '🏅' }
+                      ].map((item, idx) => (
+                        <div key={idx} className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)]/10 hover:bg-[var(--bg-secondary)]/30 transition-all flex flex-col justify-between gap-4 shadow-sm text-left">
+                          <div className="flex items-start gap-3">
+                            <span className="text-3xl select-none">{item.emoji}</span>
+                            <div>
+                              <h5 className="font-extrabold text-xs text-[var(--text-primary)]">{item.title}</h5>
+                              <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 font-medium leading-normal">{item.desc}</p>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center mt-2">
+                            <span className="text-xs font-black font-mono text-amber-500">🪙 {item.price} Coins</span>
+                            <button
+                              onClick={() => {
+                                if (rewardCoins >= item.price) {
+                                  setRewardCoins(prev => prev - item.price);
+                                  pushNotification("Redeem Success", `Successfully purchased ${item.title}!`);
+                                  setCoinHistory(prev => [
+                                    { id: Date.now(), type: 'spend', title: `Redeemed ${item.title}`, amount: item.price, time: 'Today' },
+                                    ...prev
+                                  ]);
+                                } else {
+                                  pushNotification("Insufficient Balance", `You need ${item.price - rewardCoins} more coins to purchase this.`);
+                                }
+                              }}
+                              className={`px-3 py-1.5 rounded-lg font-extrabold text-[10.5px] cursor-pointer transition-all active:scale-95 ${
+                                rewardCoins >= item.price
+                                  ? 'bg-sky-500 text-white hover:bg-sky-600 shadow-sm'
+                                  : 'bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-600 border border-[var(--border-color)] cursor-not-allowed'
+                              }`}
+                            >
+                              Redeem
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 4. Coin History */}
+                  <div className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm">
+                    <div>
+                      <h4 className="font-extrabold text-sm text-[var(--text-primary)]">Coin History</h4>
+                      <p className="text-[10.5px] text-[var(--text-muted)] mt-0.5">Recent coins transactions details.</p>
+                    </div>
+
+                    <div className="flex flex-col gap-3 font-mono">
+                      {coinHistory.length === 0 ? (
+                        <div className="text-center py-6 text-[var(--text-muted)] text-[10.5px] font-bold">
+                          No transactions logged yet. Complete missions to earn coins!
+                        </div>
+                      ) : (
+                        coinHistory.map(log => (
+                          <div key={log.id} className="flex justify-between items-center p-3 rounded-xl border border-[var(--border-color)]/60 bg-[var(--bg-secondary)]/20 hover:bg-[var(--bg-secondary)]/40 transition-all text-xs font-semibold">
+                            <div className="flex items-center gap-3 text-left">
+                              <span className="text-[10px] text-[var(--text-muted)] font-bold">{log.time}</span>
+                              <span className="text-[var(--text-primary)] font-bold">{log.title}</span>
+                            </div>
+                            <span className={`font-black ${log.type === 'earn' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                              {log.type === 'earn' ? '+' : '-'}{log.amount}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column (4 grid) */}
+                <div className="lg:col-span-4 flex flex-col gap-6">
+                  
+                  {/* 7. Level System */}
+                  <div className="p-5 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm">
+                    <h4 className="font-extrabold text-[10.5px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Level System</h4>
+                    <div className="flex items-center gap-3.5 py-1">
+                      <div className="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center text-xl select-none">
+                        🏆
+                      </div>
+                      <div className="text-left">
+                        <h5 className="font-black text-xs text-[var(--text-primary)]">Level {calculatedLevel} Explorer</h5>
+                        <p className="text-[10px] text-[var(--text-muted)] font-semibold mt-0.5">Next level benefits details</p>
+                      </div>
+                    </div>
+                    
+                    <div className="p-3 bg-[var(--bg-secondary)]/40 border border-[var(--border-color)] rounded-xl text-[10.5px] font-semibold text-[var(--text-secondary)] flex flex-col gap-2 text-left">
+                      <div className="flex justify-between font-bold">
+                        <span>Next Level</span>
+                        <span className="text-amber-500">{500 - currentProgressVal} Coins Needed</span>
+                      </div>
+                      <hr className="border-[var(--border-color)]/50 my-1" />
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-500 select-none">✔</span>
+                        <span>Bronze Profile Frame</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-500 select-none">✔</span>
+                        <span>Faster Support</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-500 select-none">✔</span>
+                        <span>New Badge</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 8. Streak Section */}
+                  <div className="p-5 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm text-left">
+                    <h4 className="font-extrabold text-[10.5px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Streak Section</h4>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-black text-rose-500 flex items-center gap-1.5">
+                        🔥 {rewardStreak} Day Streak
+                      </span>
+                      <span className="text-[10px] text-[var(--text-muted)] font-bold font-mono">Next Reward: 20 Days</span>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden">
+                        <div className="h-full bg-rose-500 rounded-full" style={{ width: '0%' }}></div>
+                      </div>
+                      <div className="flex justify-between text-[9px] text-[var(--text-muted)] font-bold font-mono">
+                        <span>Reward: +250 Coins</span>
+                        <span>0% Complete</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 6. Achievements */}
+                  <div className="p-5 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm text-left">
+                    <h4 className="font-extrabold text-[10.5px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Achievements</h4>
+
+                    <div className="flex flex-col gap-3">
+                      {[
+                        { title: 'First Assignment', desc: 'Completed', medal: '🥉', percent: 100 },
+                        { title: '10 Assignments', desc: 'Completed', medal: '🥈', percent: 100 },
+                        { title: '100 Assignments', desc: '60%', medal: '🥇', percent: 60 }
+                      ].map((item, idx) => (
+                        <div key={idx} className="flex flex-col gap-2 p-2.5 rounded-xl border border-[var(--border-color)]/60 bg-[var(--bg-secondary)]/15">
+                          <div className="flex justify-between items-center">
+                            <span className="flex items-center gap-2">
+                              <span className="text-base select-none">{item.medal}</span>
+                              <span className="text-[10.5px] font-bold text-[var(--text-primary)]">{item.title}</span>
+                            </span>
+                            <span className="text-[9.5px] text-[var(--text-muted)] font-mono font-bold">{item.desc}</span>
+                          </div>
+                          {item.percent < 100 && (
+                            <div className="h-1 w-full bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden mt-1">
+                              <div className="h-full bg-purple-500 rounded-full" style={{ width: `${item.percent}%` }}></div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 9. Leaderboard */}
+                  <div className="p-5 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm text-left">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-extrabold text-[10.5px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Leaderboard</h4>
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-amber-500/25 bg-amber-500/5 text-amber-500 font-mono">500+ Club</span>
+                    </div>
+
+                    <div className="flex flex-col gap-2.5">
+                      {(() => {
+                        const leaderboardData = [];
+                        if (user) {
+                          leaderboardData.push({
+                            rank: 1,
+                            name: `${user.name} (You)`,
+                            coins: rewardCoins,
+                            rewards: dynamicRewards,
+                            avatar: "⭐",
+                            isUser: true
+                          });
+                        }
+
+                        if (leaderboardData.length === 0) {
+                          return (
+                            <div className="text-center py-4 text-[var(--text-muted)] text-[10px] font-bold">
+                              No contributors found
+                            </div>
+                          );
+                        }
+
+                        return leaderboardData.map((student, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl border bg-sky-500/5 border-sky-500/20 transition-all">
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-xs font-mono font-black text-sky-500 w-4 text-center">#{student.rank}</span>
+                              <span className="text-sm select-none">{student.avatar}</span>
+                              <div className="text-left">
+                                <span className="text-[11px] font-bold block text-sky-500">{student.name}</span>
+                                <span className="text-[9px] text-[var(--text-muted)] font-semibold font-mono">{student.coins.toLocaleString()} Coins</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span className="text-[10px] font-black text-amber-500 bg-amber-500/5 px-2 py-0.5 rounded-md font-mono border border-amber-500/10">
+                                🎁 {student.rewards} Card{student.rewards !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                    
+                    <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl text-[10px] font-bold text-amber-600 dark:text-amber-500 text-center font-mono mt-1">
+                      Earn 500 Coins to get your next Reward Card!
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {activeTab === 'profile' && (
           <div className="animate-fade-in py-6 max-w-7xl mx-auto px-4 sm:px-6 w-full flex flex-col gap-6 text-left">
-            <div className="border-b border-[var(--border-color)] pb-3">
-              <h1 className="text-2xl font-black font-heading tracking-tight text-[var(--text-primary)]">User Profile</h1>
-              <p className="text-xs text-[var(--text-secondary)] mt-1">LeetCode statistics and activity summary for your account.</p>
-            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
@@ -3014,27 +3558,27 @@ int main() {
                     </div>
                     <div>
                       <h3 className="font-extrabold text-sm text-[var(--text-primary)] leading-tight">
-                        {user ? user.name : 'ANJALI'}
+                        {user ? user.name : 'Username'}
                       </h3>
                       <p className="text-[11px] text-[var(--text-muted)] mt-1 font-mono font-medium">
-                        @{user ? user.name.toLowerCase() : 'anjali'}
+                        @{user ? user.name.toLowerCase().replace(/\s+/g, '_') : 'username'}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex justify-between items-center text-[10px] font-bold text-[var(--text-secondary)] border-y border-[var(--border-color)] py-2.5 my-1">
-                    <span className="text-[11px] font-mono">Rank: <span className="text-[var(--text-primary)]">1,547,056</span></span>
+                    <span className="text-[11px] font-mono">Rank: <span className="text-[var(--text-primary)]">{(user ? user.rank : 0).toLocaleString()}</span></span>
                     <span className="text-[10px] text-[var(--text-muted)] bg-[var(--bg-secondary)] px-2 py-0.5 rounded">Active</span>
                   </div>
 
                   <div className="flex justify-around text-center text-xs font-semibold text-[var(--text-secondary)] my-0.5">
                     <div>
-                      <div className="text-sm font-black text-[var(--text-primary)]">2</div>
+                      <div className="text-sm font-black text-[var(--text-primary)]">{user ? (user.following || 0) : 0}</div>
                       <div className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">Following</div>
                     </div>
                     <div className="w-[1px] h-6 bg-[var(--border-color)]"></div>
                     <div>
-                      <div className="text-sm font-black text-[var(--text-primary)]">2</div>
+                      <div className="text-sm font-black text-[var(--text-primary)]">{user ? (user.followers || 0) : 0}</div>
                       <div className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">Followers</div>
                     </div>
                   </div>
@@ -3060,24 +3604,44 @@ int main() {
                 </div>
 
                 {/* Community Stats Card */}
-                <div className="p-5 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-3 shadow-sm">
-                  <h4 className="font-bold text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Community Stats</h4>
-                  <div className="flex flex-col gap-2.5 text-[11px] font-semibold text-[var(--text-secondary)]">
+                <div className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm">
+                  <h4 className="font-bold text-xs text-[var(--text-muted)] uppercase tracking-wider font-mono">Community Stats</h4>
+                  <div className="flex flex-col gap-4.5 text-xs sm:text-sm font-semibold text-[var(--text-secondary)]">
                     <div className="flex justify-between items-center">
-                      <span className="flex items-center gap-2">👀 Views</span>
-                      <span className="text-[var(--text-primary)] font-bold">0 <span className="text-[9px] text-[var(--text-muted)] font-normal ml-1">last week 0</span></span>
+                      <span className="flex items-center gap-3">
+                        <span className="text-lg select-none">👀</span>
+                        <span>Views</span>
+                      </span>
+                      <span className="text-sm font-black text-[var(--text-primary)]">
+                        0 <span className="text-[10.5px] text-[var(--text-muted)] font-medium ml-1.5">last week 0</span>
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="flex items-center gap-2">✔️ Solution</span>
-                      <span className="text-[var(--text-primary)] font-bold">0 <span className="text-[9px] text-[var(--text-muted)] font-normal ml-1">last week 0</span></span>
+                      <span className="flex items-center gap-3">
+                        <span className="text-lg select-none">✔️</span>
+                        <span>Assignment</span>
+                      </span>
+                      <span className="text-sm font-black text-[var(--text-primary)]">
+                        0 <span className="text-[10.5px] text-[var(--text-muted)] font-medium ml-1.5">last week 0</span>
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="flex items-center gap-2">💬 Discuss</span>
-                      <span className="text-[var(--text-primary)] font-bold">0 <span className="text-[9px] text-[var(--text-muted)] font-normal ml-1">last week 0</span></span>
+                      <span className="flex items-center gap-3">
+                        <span className="text-lg select-none">💬</span>
+                        <span>Discuss</span>
+                      </span>
+                      <span className="text-sm font-black text-[var(--text-primary)]">
+                        0 <span className="text-[10.5px] text-[var(--text-muted)] font-medium ml-1.5">last week 0</span>
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="flex items-center gap-2">⭐ Reputation</span>
-                      <span className="text-[var(--text-primary)] font-bold">0 <span className="text-[9px] text-[var(--text-muted)] font-normal ml-1">last week 0</span></span>
+                      <span className="flex items-center gap-3">
+                        <span className="text-lg select-none">⭐</span>
+                        <span>Reputation</span>
+                      </span>
+                      <span className="text-sm font-black text-[var(--text-primary)]">
+                        0 <span className="text-[10.5px] text-[var(--text-muted)] font-medium ml-1.5">last week 0</span>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -3098,48 +3662,65 @@ int main() {
                       <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                         {/* Base Circle */}
                         <circle cx="18" cy="18" r="15.915" fill="none" stroke="var(--border-color)" strokeWidth="2.5"></circle>
-                        {/* Easy Circle (Green) */}
-                        <circle cx="18" cy="18" r="15.915" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeDasharray="2.5 97.5" strokeDashoffset="100"></circle>
-                        {/* Med Circle (Yellow) */}
-                        <circle cx="18" cy="18" r="15.915" fill="none" stroke="#eab308" strokeWidth="2.5" strokeDasharray="0.5 99.5" strokeDashoffset="97.5"></circle>
+                        {/* Orders Circle (Blue) */}
+                        <circle 
+                          cx="18" 
+                          cy="18" 
+                          r="15.915" 
+                          fill="none" 
+                          stroke="#0ea5e9" 
+                          strokeWidth="2.5" 
+                          strokeDasharray={`${user ? user.orders : 0} ${100 - (user ? user.orders : 0)}`} 
+                          strokeDashoffset="100"
+                        ></circle>
+                        {/* Contributions Circle (Purple) */}
+                        <circle 
+                          cx="18" 
+                          cy="18" 
+                          r="15.915" 
+                          fill="none" 
+                          stroke="#a855f7" 
+                          strokeWidth="2.5" 
+                          strokeDasharray={`${user ? (contributors.find(c => c.name.toLowerCase() === user.name.toLowerCase())?.uploads || 0) : 0} ${100 - (user ? (contributors.find(c => c.name.toLowerCase() === user.name.toLowerCase())?.uploads || 0) : 0)}`} 
+                          strokeDashoffset={`${100 - (user ? user.orders : 0)}`}
+                        ></circle>
                       </svg>
                       <div className="absolute flex flex-col items-center justify-center text-center">
-                        <span className="text-lg font-black text-[var(--text-primary)] leading-tight">103</span>
-                        <span className="text-[8.5px] text-[var(--text-muted)] font-bold uppercase tracking-wider">/ 3985</span>
-                        <span className="text-[9px] text-emerald-500 font-bold mt-0.5">Solved</span>
+                        <span className="text-xl font-black text-[var(--text-primary)] leading-tight">{user ? user.orders : 0}</span>
+                        <span className="text-[9px] text-sky-500 font-bold mt-0.5 uppercase tracking-wider">Orders</span>
                       </div>
                     </div>
 
                     {/* Breakdown Bars */}
                     <div className="flex-grow flex flex-col gap-3 text-left">
-                      {/* Easy */}
+                      {/* Orders */}
                       <div className="flex flex-col gap-1">
                         <div className="flex justify-between text-[10.5px] font-bold">
-                          <span className="text-emerald-500">Easy</span>
-                          <span className="text-[var(--text-primary)]">98 <span className="text-[9.5px] text-[var(--text-muted)] font-medium">/ 953</span></span>
+                          <span className="text-sky-500">Orders</span>
+                          <span className="text-[var(--text-primary)]">{user ? user.orders : 0} <span className="text-[9.5px] text-[var(--text-muted)] font-medium">/ 1000</span></span>
                         </div>
                         <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden">
-                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: '10%' }}></div>
+                          <div className="h-full bg-sky-500 rounded-full" style={{ width: `${Math.min((user ? user.orders : 0) * 100 / 1000, 100)}%` }}></div>
                         </div>
                       </div>
-                      {/* Medium */}
+                      {/* Contributions */}
                       <div className="flex flex-col gap-1">
                         <div className="flex justify-between text-[10.5px] font-bold">
-                          <span className="text-amber-500">Medium</span>
-                          <span className="text-[var(--text-primary)]">5 <span className="text-[9.5px] text(--text-muted) font-medium">/ 2081</span></span>
+                          <span className="text-purple-500">Contributions</span>
+                          <span className="text-[var(--text-primary)]">{user ? (contributors.find(c => c.name.toLowerCase() === user.name.toLowerCase())?.uploads || 0) : 0} <span className="text-[9.5px] text-[var(--text-muted)] font-medium">/ 1000</span></span>
                         </div>
                         <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden">
-                          <div className="h-full bg-amber-500 rounded-full" style={{ width: '0.2%' }}></div>
+                          <div className="h-full bg-purple-500 rounded-full" style={{ width: `${Math.min((user ? (contributors.find(c => c.name.toLowerCase() === user.name.toLowerCase())?.uploads || 0) : 0) * 100 / 1000, 100)}%` }}></div>
                         </div>
                       </div>
-                      {/* Hard */}
-                      <div className="flex flex-col gap-1">
+                      {/* Blank / Placeholder Spacer */}
+                      <div className="flex flex-col gap-1 select-none opacity-0 pointer-events-none">
                         <div className="flex justify-between text-[10.5px] font-bold">
-                          <span className="text-red-500">Hard</span>
-                          <span className="text-[var(--text-primary)]">0 <span className="text-[9.5px] text-[var(--text-muted)] font-medium">/ 951</span></span>
+                          <span>Placeholder</span>
+                          <span>0</span>
                         </div>
                         <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden">
-                          <div className="h-full bg-red-500 rounded-full" style={{ width: '0%' }}></div>
+                          <div className="h-full bg-slate-200 rounded-full" style={{ width: '0%' }}></div>
                         </div>
                       </div>
                     </div>
@@ -3147,123 +3728,169 @@ int main() {
                   </div>
 
                   {/* Badges Card */}
-                  <div className="sm:col-span-5 p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-3 shadow-sm text-left">
+                  <div className="sm:col-span-5 p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col justify-between gap-3 shadow-sm text-left min-h-[125px]">
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Badges</span>
-                      <span className="text-xs font-black text-[var(--text-primary)]">1</span>
+                      <span className="text-xs font-black text-[var(--text-primary)]">0</span>
                     </div>
 
-                    <div className="flex items-center gap-4 mt-2">
-                      {/* Shield Graphic Badge */}
-                      <div className="w-14 h-14 bg-emerald-500/10 rounded-xl border border-emerald-500/25 flex items-center justify-center text-3xl shadow-sm relative group cursor-pointer hover:scale-105 transition-all">
-                        🛡️
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-yellow-500 text-white font-extrabold text-[8px] rounded-full flex items-center justify-center border-2 border-white dark:border-slate-950">
-                          50
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="font-extrabold text-xs text-[var(--text-primary)] leading-tight">50 Days Badge 2026</h4>
-                        <p className="text-[9.5px] text-[var(--text-muted)] font-semibold mt-1">Most Recent Badge</p>
-                      </div>
+                    <div className="flex flex-col items-center justify-center text-center py-2.5">
+                      <p className="text-[10.5px] text-[var(--text-muted)] font-bold">No badges unlocked yet</p>
+                      <p className="text-[9px] text-slate-400 dark:text-slate-600 mt-1 font-medium">Badges you earn will appear here.</p>
                     </div>
                   </div>
 
                 </div>
 
                 {/* Row 2: Heatmap Calendar */}
-                <div className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm text-left">
-                  <div className="flex justify-between items-center flex-wrap gap-2">
-                    <h4 className="font-bold text-xs text-[var(--text-primary)]">161 submissions in the past one year</h4>
-                    <div className="flex gap-4 text-[10.5px] font-semibold text-[var(--text-secondary)] font-mono">
-                      <span>Total active days: <span className="text-emerald-500 font-bold">53</span></span>
-                      <span>•</span>
-                      <span>Max streak: <span className="text-emerald-500 font-bold">34</span></span>
-                    </div>
-                  </div>
+                {(() => {
+                  const userOrdersCount = user ? user.orders : 0;
+                  const userContribsCount = user ? (contributors.find(c => c.name.toLowerCase() === user.name.toLowerCase())?.uploads || 0) : 0;
+                  const totalSubmissions = userOrdersCount + userContribsCount;
+                  
+                  // Compute deterministic set of indexes to light up based on totalSubmissions
+                  const activeIndices = new Set();
+                  for (let s = 0; s < totalSubmissions; s++) {
+                    const idx = (s * 101) % 365;
+                    activeIndices.add(idx);
+                  }
+                  
+                  return (
+                    <div className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm text-left">
+                      <div className="flex justify-between items-center flex-wrap gap-2">
+                        <h4 className="font-bold text-xs text-[var(--text-primary)]">{totalSubmissions} submissions in the past one year</h4>
+                        <div className="flex gap-4 text-[10.5px] font-semibold text-[var(--text-secondary)] font-mono">
+                          <span>Total active days: <span className="text-emerald-500 font-bold">{totalSubmissions}</span></span>
+                          <span>•</span>
+                          <span>Max streak: <span className="text-emerald-500 font-bold">{totalSubmissions}</span></span>
+                        </div>
+                      </div>
 
-                  {/* LeetCode Heatmap Grid Grid */}
-                  <div className="overflow-x-auto w-full pb-2">
-                    <div className="flex gap-1.5 min-w-[650px] justify-between text-[8px] font-mono text-[var(--text-muted)] font-bold mb-1 px-1">
-                      {["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"].map(m => (
-                        <span key={m} className="w-[38px] text-center">{m}</span>
-                      ))}
-                    </div>
+                      {/* LeetCode Heatmap Grid Grid */}
+                      <div className="overflow-x-auto w-full pb-2">
+                        <div className="flex gap-1.5 min-w-[650px] justify-between text-[8px] font-mono text-[var(--text-muted)] font-bold mb-1 px-1">
+                          {["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"].map((m, idx) => (
+                            <span key={`${m}-${idx}`} className="w-[38px] text-center">{m}</span>
+                          ))}
+                        </div>
 
-                    <div className="grid grid-flow-col grid-rows-7 gap-[3.5px] min-w-[650px]">
-                      {(() => {
-                        const cells = [];
-                        // Generate 365 squares
-                        for (let i = 0; i < 365; i++) {
-                          let opacityClass = "bg-slate-100 dark:bg-slate-900 border border-slate-200/20"; // 0 submissions
-                          
-                          // Simulate clusters of activity in April-July (indices 260-365)
-                          if (i >= 260) {
-                            const rand = Math.random();
-                            if (rand > 0.75) {
-                              opacityClass = "bg-emerald-500/40 border border-emerald-500/10"; // light green
-                            } else if (rand > 0.5) {
-                              opacityClass = "bg-emerald-500/70 border border-emerald-500/20"; // medium green
-                            } else if (rand > 0.35) {
-                              opacityClass = "bg-emerald-500 border border-emerald-500/30"; // deep green
+                        <div className="grid grid-flow-col grid-rows-7 gap-[3.5px] min-w-[650px]">
+                          {(() => {
+                            const cells = [];
+                            // Generate 365 squares
+                            for (let i = 0; i < 365; i++) {
+                              let opacityClass = "bg-slate-100 dark:bg-slate-900 border border-slate-200/20"; // 0 submissions
+                              
+                              if (activeIndices.has(i)) {
+                                // Determine intensity based on index to make it look organic
+                                if (i % 3 === 0) {
+                                  opacityClass = "bg-emerald-500 border border-emerald-500/30"; // deep green
+                                } else if (i % 3 === 1) {
+                                  opacityClass = "bg-emerald-500/70 border border-emerald-500/20"; // medium green
+                                } else {
+                                  opacityClass = "bg-emerald-500/40 border border-emerald-500/10"; // light green
+                                }
+                              }
+
+                              cells.push(
+                                <div 
+                                  key={i} 
+                                  className={`w-2.5 h-2.5 rounded-sm transition-colors duration-300 ${opacityClass}`}
+                                  title={`Day ${i}: Activity level calculated`}
+                                ></div>
+                              );
                             }
-                          } else if (i % 23 === 0) {
-                            opacityClass = "bg-emerald-500/20"; // light accent
-                          }
+                            return cells;
+                          })()}
+                        </div>
 
-                          cells.push(
-                            <div 
-                              key={i} 
-                              className={`w-2.5 h-2.5 rounded-sm transition-colors duration-300 ${opacityClass}`}
-                              title={`Day ${i}: Activity level calculated`}
-                            ></div>
-                          );
-                        }
-                        return cells;
-                      })()}
+                        <div className="flex justify-end items-center gap-1.5 mt-4 text-[9px] font-mono text-[var(--text-muted)] px-1">
+                          <span>Less</span>
+                          <div className="w-2.5 h-2.5 rounded-sm bg-slate-100 dark:bg-slate-900"></div>
+                          <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/20"></div>
+                          <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/40"></div>
+                          <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/70"></div>
+                          <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></div>
+                          <span>More</span>
+                        </div>
+                      </div>
                     </div>
-
-                    <div className="flex justify-end items-center gap-1.5 mt-4 text-[9px] font-mono text-[var(--text-muted)] px-1">
-                      <span>Less</span>
-                      <div className="w-2.5 h-2.5 rounded-sm bg-slate-100 dark:bg-slate-900"></div>
-                      <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/20"></div>
-                      <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/50"></div>
-                      <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></div>
-                      <span>More</span>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* Row 3: Submissions List */}
                 <div className="p-5 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm text-left">
                   
                   {/* Accepted submissions tabs */}
-                  <div className="flex border-b border-[var(--border-color)] text-xs font-bold text-[var(--text-muted)] gap-6 pb-2.5">
-                    <span className="text-emerald-500 border-b-2 border-emerald-500 pb-2.5 px-1 cursor-pointer select-none">Recent AC</span>
-                    <span className="hover:text-[var(--text-primary)] pb-2.5 px-1 cursor-pointer select-none">List</span>
-                    <span className="hover:text-[var(--text-primary)] pb-2.5 px-1 cursor-pointer select-none">Solutions</span>
-                    <span className="hover:text-[var(--text-primary)] pb-2.5 px-1 cursor-pointer select-none">Discuss</span>
+                  <div className="flex border-b border-[var(--border-color)] text-xs font-bold text-[var(--text-muted)] gap-4 sm:gap-6 pb-2.5 flex-wrap">
+                    {[
+                      { id: 'all', name: 'All', icon: <ListChecks size={13} /> },
+                      { id: 'recent', name: 'Recent Orders', icon: <FileText size={13} /> },
+                      { id: 'active', name: 'Active', icon: <Clock size={13} /> },
+                      { id: 'delivered', name: 'Delivered', icon: <CheckSquare size={13} /> }
+                    ].map(tab => {
+                      const isActive = activeSubmissionsTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveSubmissionsTab(tab.id)}
+                          className={`flex items-center gap-1.5 pb-2.5 px-1 transition-all select-none border-b-2 cursor-pointer font-bold ${
+                            isActive 
+                              ? 'text-sky-500 border-sky-500' 
+                              : 'text-[var(--text-muted)] border-transparent hover:text-[var(--text-primary)]'
+                          }`}
+                        >
+                          {tab.icon}
+                          <span>{tab.name}</span>
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <div className="flex flex-col gap-3 text-xs font-semibold text-[var(--text-secondary)]">
-                    {[
-                      { name: 'Longest Nice Substring', time: '6 hours ago', lang: 'JavaScript' },
-                      { name: 'Defuse the Bomb', time: '12 hours ago', lang: 'JavaScript' },
-                      { name: 'Add Two Numbers', time: '1 day ago', lang: 'Java' },
-                      { name: 'Two Sum', time: '2 days ago', lang: 'Python' },
-                      { name: 'Merge Sorted Array', time: '3 days ago', lang: 'C++' },
-                      { name: 'Remove Duplicates from Sorted Array', time: '4 days ago', lang: 'Java' }
-                    ].map((ac, idx) => (
-                      <div key={idx} className="flex justify-between items-center p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)]/30 hover:bg-[var(--bg-secondary)]/60 transition-all">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">AC</span>
-                          <span className="text-[var(--text-primary)] font-bold">{ac.name}</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-[10.5px] text-[var(--text-muted)] font-mono">
-                          <span className="text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded text-[9.5px] font-bold">{ac.lang}</span>
-                          <span>{ac.time}</span>
-                        </div>
-                      </div>
-                    ))}
+                    {(() => {
+                      const filteredOrders = dashboardActiveOrders.filter(order => {
+                        if (activeSubmissionsTab === 'all') return true;
+                        if (activeSubmissionsTab === 'recent') return true;
+                        if (activeSubmissionsTab === 'active') {
+                          return order.status === 'Pending' || order.status === 'In Progress' || order.status === 'Under Review';
+                        }
+                        if (activeSubmissionsTab === 'delivered') {
+                          return order.status === 'Delivered';
+                        }
+                        return true;
+                      });
+
+                      if (filteredOrders.length === 0) {
+                        return (
+                          <div className="flex flex-col items-center justify-center text-center py-6 text-[var(--text-muted)]">
+                            <span className="text-xl mb-1 select-none">📦</span>
+                            <p className="font-bold text-[10.5px]">No orders in this tab</p>
+                            <p className="text-[9px] text-slate-400 dark:text-slate-600 mt-0.5 font-medium">Any matching orders will appear here.</p>
+                          </div>
+                        );
+                      }
+
+                      return filteredOrders.map((order, idx) => {
+                        const deadlineItem = dashboardDeadlines.find(d => d.orderId === order.id);
+                        const deadlineDateText = deadlineItem 
+                          ? new Date(deadlineItem.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                          : 'No deadline';
+                        
+                        return (
+                          <div key={order.id || idx} className="flex justify-between items-center p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)]/30 hover:bg-[var(--bg-secondary)]/60 transition-all text-left">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[9px] font-black text-sky-500 bg-sky-500/10 px-2 py-0.5 rounded font-mono">{order.id}</span>
+                              <span className="text-[var(--text-primary)] font-bold">{order.subject}</span>
+                            </div>
+                            <div className="flex items-center gap-4 text-[10.5px] text-[var(--text-muted)] font-mono">
+                              <span className="text-purple-500 bg-purple-500/10 px-2 py-0.5 rounded text-[9.5px] font-bold">{order.status}</span>
+                              <span>{deadlineDateText}</span>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
 
                 </div>
@@ -3282,7 +3909,7 @@ int main() {
       <footer className="footer bg-[var(--bg-secondary)] border-t border-[var(--border-color)] mt-20 py-10 px-6 text-center text-xs text-[var(--text-muted)] select-none">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 font-medium">
           <span>&copy; 2026 TSEC Assignment Hub. Built for Thakur Shyamnarayan Engineering College.</span>
-          <span className="font-mono text-[10px]">"Everything You Need for College, All in One Place."</span>
+          <span className="font-mono text-[10px]">&quot;Everything You Need for College, All in One Place.&quot;</span>
         </div>
       </footer>
 
@@ -3359,7 +3986,7 @@ int main() {
                         
                         <div className="p-2 bg-slate-50 border border-slate-100 rounded-lg font-mono text-[7px] text-slate-800 my-2 shadow-inner">
                           {activeDetail.id === 1 ? (
-                            <span>class ThreadRunner implements Runnable &#123;<br/>&nbsp;&nbsp;public void run() &#123; System.out.println("Active"); &#125;<br/>&#125;</span>
+                            <span>class ThreadRunner implements Runnable &#123;<br/>&nbsp;&nbsp;public void run() &#123; System.out.println(&quot;Active&quot;); &#125;<br/>&#125;</span>
                           ) : activeDetail.id === 2 ? (
                             <span>void dfs(int u) &#123;<br/>&nbsp;&nbsp;visited[u] = true;<br/>&nbsp;&nbsp;for(int v : adj[u]) if(!visited[v]) dfs(v);<br/>&#125;</span>
                           ) : activeDetail.id === 3 ? (

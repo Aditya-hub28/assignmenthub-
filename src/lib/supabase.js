@@ -163,11 +163,26 @@ const initialDeadlines = [
 ];
 
 const initialContributors = [
-  { rank: 1, name: "Sneha G.", uploads: 45, downloads: 180, points: 450 },
-  { rank: 2, name: "Aditya S.", uploads: 32, downloads: 220, points: 380 },
-  { rank: 3, name: "Rohan K.", uploads: 28, downloads: 120, points: 290 },
-  { rank: 4, name: "Snehal M.", uploads: 20, downloads: 90, points: 210 },
-  { rank: 5, name: "Prof. R. Mehta", uploads: 15, downloads: 350, points: 150 }
+  { rank: 1, name: "Sneha G.", uploads: 95, downloads: 480, points: 950 },
+  { rank: 2, name: "Aditya S.", uploads: 82, downloads: 420, points: 820 },
+  { rank: 3, name: "Rohan K.", uploads: 78, downloads: 390, points: 780 },
+  { rank: 4, name: "Snehal M.", uploads: 70, downloads: 310, points: 700 },
+  { rank: 5, name: "Amit Shah", uploads: 65, downloads: 290, points: 650 },
+  { rank: 6, name: "Jayesh R.", uploads: 60, downloads: 270, points: 600 },
+  { rank: 7, name: "Tanvi S.", uploads: 55, downloads: 250, points: 550 },
+  { rank: 8, name: "Ravi M.", uploads: 50, downloads: 230, points: 500 },
+  { rank: 9, name: "Hrishikesh B.", uploads: 45, downloads: 210, points: 450 },
+  { rank: 10, name: "Pooja P.", uploads: 42, downloads: 190, points: 420 },
+  { rank: 11, name: "Ketan S.", uploads: 40, downloads: 180, points: 400 },
+  { rank: 12, name: "Siddhesh R.", uploads: 38, downloads: 170, points: 380 },
+  { rank: 13, name: "Nisha K.", uploads: 35, downloads: 160, points: 350 },
+  { rank: 14, name: "Jay R.", uploads: 32, downloads: 150, points: 320 },
+  { rank: 15, name: "Kunal M.", uploads: 30, downloads: 140, points: 300 },
+  { rank: 16, name: "Yash P.", uploads: 28, downloads: 130, points: 280 },
+  { rank: 17, name: "Rahul Sharma", uploads: 12, downloads: 40, points: 120 },
+  { rank: 18, name: "Neha G.", uploads: 10, downloads: 30, points: 100 },
+  { rank: 19, name: "Gaurav S.", uploads: 8, downloads: 20, points: 80 },
+  { rank: 20, name: "Anjali Mishra", uploads: 0, downloads: 0, points: 0 }
 ];
 
 // Helper to load mock DB from localStorage safely on Client Side
@@ -176,7 +191,16 @@ function loadMockData(key, defaultData) {
   const stored = localStorage.getItem(`tsec_${key}`);
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      if (key === 'contributors') {
+        const idx = parsed.findIndex(c => c.name.toLowerCase() === 'anjali mishra');
+        if (idx !== -1 && parsed[idx].uploads !== 0) {
+          parsed[idx].uploads = 0;
+          parsed[idx].points = 0;
+          localStorage.setItem(`tsec_${key}`, JSON.stringify(parsed));
+        }
+      }
+      return parsed;
     } catch {
       return defaultData;
     }
