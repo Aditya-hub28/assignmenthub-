@@ -750,7 +750,7 @@ int main() {
           </div>
 
           {/* Nav Links */}
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-5">
             {[
               { key: 'home', label: 'Home' },
               { key: 'browse', label: 'Browse Library', icon: <Folder size={12}/> },
@@ -765,7 +765,7 @@ int main() {
                   setActiveTab(item.key);
                   if (item.key === 'browse') setBrowsePath([]);
                 }} 
-                className={`cursor-pointer text-xs font-semibold flex items-center gap-1.5 px-3.5 py-2.5 rounded-full transition-all relative select-none ${
+                className={`cursor-pointer text-xs font-semibold flex items-center gap-1.5 px-5 py-2.5 rounded-full transition-all relative select-none ${
                   activeTab === item.key 
                     ? 'text-sky-500 bg-sky-500/5 font-bold' 
                     : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
