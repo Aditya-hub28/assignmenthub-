@@ -245,10 +245,12 @@ h1, h2, h3, h4, h5, h6 {
 .tsec-pill-nav--scrolled {
   border-color: var(--border-color);
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
+  background: var(--bg-primary) !important;
 }
 
 body.dark .tsec-pill-nav--scrolled {
   box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.5);
+  background: var(--bg-primary) !important;
 }
 
 

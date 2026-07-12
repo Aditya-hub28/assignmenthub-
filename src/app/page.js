@@ -1228,7 +1228,7 @@ int main() {
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-[var(--border-color)] bg-[var(--glass-bg)] backdrop-blur-lg p-4 shadow-xl z-50 animate-fade-in">
+                <div className="fixed md:absolute left-4 right-4 md:left-auto md:right-0 top-20 md:top-auto md:mt-3 md:w-80 rounded-2xl border border-[var(--border-color)] bg-[var(--glass-bg)] backdrop-blur-lg p-4 shadow-xl z-[1100] animate-fade-in">
                   <div className="flex justify-between items-center pb-2.5 border-b border-[var(--border-color)] mb-3">
                     <span className="text-xs font-bold font-heading">Notifications</span>
                     <button 
@@ -1283,8 +1283,8 @@ int main() {
                   {/* Dropdown panel */}
                   {avatarDropdownOpen && (
                     <>
-                      <div className="fixed inset-0 z-40 cursor-default" onClick={() => setAvatarDropdownOpen(false)}></div>
-                      <div className="absolute right-0 mt-3.5 w-64 rounded-2xl border border-[var(--border-color)] bg-white dark:bg-slate-950 p-4 shadow-xl z-50 animate-scale-in text-left text-xs font-medium text-[var(--text-secondary)]">
+                      <div className="fixed inset-0 z-[1050] cursor-default" onClick={() => setAvatarDropdownOpen(false)}></div>
+                      <div className="fixed md:absolute left-4 right-4 md:left-auto md:right-0 top-20 md:top-auto md:mt-3.5 md:w-64 rounded-2xl border border-[var(--border-color)] bg-white dark:bg-slate-950 p-4 shadow-xl z-[1100] animate-scale-in text-left text-xs font-medium text-[var(--text-secondary)]">
                         {user.role === 'writer' ? (
                           <div className="flex flex-col gap-3">
                             <div 
@@ -1538,7 +1538,7 @@ int main() {
 
       {/* Mobile Nav Drawer */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 bg-[var(--bg-primary)] z-40 flex flex-col justify-center items-center p-8 lg:hidden animate-fade-in">
+        <div className="fixed inset-0 bg-[var(--bg-primary)] z-[2000] flex flex-col justify-center items-center p-8 lg:hidden animate-fade-in">
           <button 
             onClick={() => setMobileMenuOpen(false)} 
             className="absolute top-6 right-6 p-2 rounded-full border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
@@ -4469,7 +4469,7 @@ int main() {
       {/* INTERACTIVE DETAILS MODAL VIEW               */}
       {/* ═══════════════════════════════════════════ */}
       {activeDetail && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-[1100] flex items-center justify-center p-4 animate-fade-in">
           <div className="w-full max-w-4xl max-h-[85vh] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden flex flex-col shadow-2xl">
             
             {/* Modal Header */}
@@ -4703,7 +4703,7 @@ int main() {
       {/* AUTHENTICATION MODALS                       */}
       {/* ═══════════════════════════════════════════ */}
       {loginModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[1100] flex items-center justify-center p-4 animate-fade-in">
           <form onSubmit={handleLogin} className="w-full max-w-sm bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl p-6 flex flex-col gap-4 shadow-2xl">
             <div className="flex justify-between items-center pb-2 border-b border-[var(--border-color)]">
               <h3 className="font-extrabold text-sm font-heading uppercase tracking-wider text-[var(--text-primary)]">Student Sign In</h3>
@@ -4742,7 +4742,7 @@ int main() {
       )}
 
       {signupModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[1100] flex items-center justify-center p-4 animate-fade-in">
           <form onSubmit={handleSignup} className="w-full max-w-sm bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl p-6 flex flex-col gap-4 shadow-2xl">
             <div className="flex justify-between items-center pb-2 border-b border-[var(--border-color)]">
               <h3 className="font-extrabold text-sm font-heading uppercase tracking-wider text-[var(--text-primary)]">Student Registration</h3>
@@ -4792,7 +4792,7 @@ int main() {
       )}
 
       {isEditingProfile && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in text-left">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[1100] flex items-center justify-center p-4 animate-fade-in text-left">
           <form onSubmit={handleSaveProfile} className="w-full max-w-sm bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl p-6 flex flex-col gap-4 shadow-2xl">
             <div className="flex justify-between items-center pb-2 border-b border-[var(--border-color)]">
               <h3 className="font-extrabold text-sm font-heading uppercase tracking-wider text-[var(--text-primary)]">Edit Profile</h3>
