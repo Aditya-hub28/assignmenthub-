@@ -108,6 +108,45 @@ export default function Home() {
   // Navigation & View Routing
   const [activeTab, setActiveTab] = useState('home'); // home, search, browse, upload, pricing, about, dashboard, admin, calendar, leaderboard, ai
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Sync activeTab state with browser URL Hash (history routing)
+  useEffect(() => {
+    const validTabs = ['home', 'search', 'browse', 'upload', 'pricing', 'about', 'dashboard', 'admin', 'calendar', 'leaderboard', 'ai', 'rewards', 'profile'];
+    
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash && validTabs.includes(hash)) {
+        setActiveTab(hash);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      const initialHash = window.location.hash.replace('#', '');
+      if (initialHash && validTabs.includes(initialHash)) {
+        setActiveTab(initialHash);
+      } else {
+        window.location.hash = '#home';
+        setActiveTab('home');
+      }
+
+      window.addEventListener('hashchange', handleHashChange);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('hashchange', handleHashChange);
+      }
+    };
+  }, []);
+
+  // Update hash when activeTab is changed programmatically
+  useEffect(() => {
+    if (typeof window !== 'undefined' && activeTab) {
+      if (window.location.hash !== `#${activeTab}`) {
+        window.location.hash = `#${activeTab}`;
+      }
+    }
+  }, [activeTab]);
   
   // DEFAULT THEME: 'light' (matches previous website white background pill nav layout)
   const [theme, setTheme] = useState('light'); 
@@ -125,6 +164,12 @@ export default function Home() {
   const [signupPass, setSignupPass] = useState('');
   const [contributionPoints, setContributionPoints] = useState(120);
 
+  // Profile Edit State
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editLocation, setEditLocation] = useState('India');
+  const [editAvatar, setEditAvatar] = useState('⭐');
+
   // Search View Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [searchSem, setSearchSem] = useState('all');
@@ -132,6 +177,7 @@ export default function Home() {
   const [searchType, setSearchType] = useState('all');
   const [searchSort, setSearchSort] = useState('newest');
   const [activeSubmissionsTab, setActiveSubmissionsTab] = useState('all');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // Reward Hub States
   const [rewardCoins, setRewardCoins] = useState(0);
@@ -145,6 +191,7 @@ export default function Home() {
   const [missionRate, setMissionRate] = useState(false);
   const [coinHistory, setCoinHistory] = useState([]);
   const [particles, setParticles] = useState([]);
+  const [storeSubTab, setStoreSubTab] = useState('redeem');
 
   const triggerConfetti = () => {
     triggerConfettiHelper(setParticles);
@@ -160,6 +207,12 @@ export default function Home() {
         setTimeout(() => triggerConfetti(), 100);
       }
       return newCoins;
+    });
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      const updatedUser = { ...prevUser, coins: (prevUser.coins || 0) + amount };
+      localStorage.setItem('tsec_user', JSON.stringify(updatedUser));
+      return updatedUser;
     });
     setCoinHistory(prev => [
       { id: generateId(), type: 'earn', title: sourceName, amount: amount, time: 'Today' },
@@ -272,7 +325,71 @@ export default function Home() {
               parsed.delivered = 0;
               localStorage.setItem('tsec_user', JSON.stringify(parsed));
             }
+            // Developer Reward: Credit 1000 HubCoins immediately
+            if (!localStorage.getItem('tsec_dev_credit_1000')) {
+              parsed.coins = (parsed.coins || 0) + 1000;
+              localStorage.setItem('tsec_user', JSON.stringify(parsed));
+              localStorage.setItem('tsec_dev_credit_1000', 'true');
+              setRewardCoins(parsed.coins);
+              
+              setCoinHistory(prev => [
+                { id: Date.now(), type: 'earn', title: 'Developer Reward Credit', amount: 1000, time: 'Today' },
+                ...prev
+              ]);
+              
+              setTimeout(() => {
+                pushNotificationHelper(setNotifications, "Developer Reward! 🪙", "You have been credited +1000 HubCoins!");
+                triggerConfettiHelper(setParticles);
+              }, 2000);
+            } else {
+              setRewardCoins(parsed.coins || 0);
+            }
+
+            // Developer Reward Boost: Credit 10000 HubCoins immediately
+            if (!localStorage.getItem('tsec_dev_credit_10000')) {
+              parsed.coins = (parsed.coins || 0) + 10000;
+              localStorage.setItem('tsec_user', JSON.stringify(parsed));
+              localStorage.setItem('tsec_dev_credit_10000', 'true');
+              setRewardCoins(parsed.coins);
+              
+              setCoinHistory(prev => [
+                { id: Date.now() + 2, type: 'earn', title: 'Developer Boost Credit', amount: 10000, time: 'Today' },
+                ...prev
+              ]);
+              
+              setTimeout(() => {
+                pushNotificationHelper(setNotifications, "Developer Boost! 🪙", "You have been credited +10000 HubCoins!");
+                triggerConfettiHelper(setParticles);
+              }, 2500);
+            }
             setUser(parsed);
+            setEditName(parsed.name || '');
+            setEditLocation(parsed.location || 'India');
+            setEditAvatar(parsed.avatar || '⭐');
+
+            // Check Daily Login Bonus
+            const today = new Date().toISOString().split('T')[0];
+            const lastLoginDate = localStorage.getItem(`tsec_last_login_${parsed.email}`);
+            if (lastLoginDate !== today) {
+              setMissionLogin(true);
+              const bonusAmount = 10;
+              parsed.coins = (parsed.coins || 0) + bonusAmount;
+              localStorage.setItem('tsec_user', JSON.stringify(parsed));
+              localStorage.setItem(`tsec_last_login_${parsed.email}`, today);
+              setRewardCoins(parsed.coins);
+              
+              setCoinHistory(prev => [
+                { id: Date.now(), type: 'earn', title: 'Daily Login Bonus', amount: bonusAmount, time: 'Today' },
+                ...prev
+              ]);
+              
+              setTimeout(() => {
+                pushNotificationHelper(setNotifications, "Daily Login Bonus! 🪙", "You logged in today and automatically earned +10 Coins!");
+                triggerConfettiHelper(setParticles);
+              }, 1500);
+            } else {
+              setMissionLogin(true);
+            }
           } else {
             const defaultUser = {
               name: 'Anjali Mishra',
@@ -290,8 +407,67 @@ export default function Home() {
               delivered: 0,
               onTime: 100
             };
+            // Developer Reward for default user
+            if (!localStorage.getItem('tsec_dev_credit_1000')) {
+              defaultUser.coins = (defaultUser.coins || 0) + 1000;
+              localStorage.setItem('tsec_dev_credit_1000', 'true');
+              
+              setCoinHistory(prev => [
+                { id: Date.now() + 1, type: 'earn', title: 'Developer Reward Credit', amount: 1000, time: 'Today' },
+                ...prev
+              ]);
+              
+              setTimeout(() => {
+                pushNotificationHelper(setNotifications, "Developer Reward! 🪙", "You have been credited +1000 HubCoins!");
+                triggerConfettiHelper(setParticles);
+              }, 2000);
+            }
+
+            // Developer Reward Boost for default user
+            if (!localStorage.getItem('tsec_dev_credit_10000')) {
+              defaultUser.coins = (defaultUser.coins || 0) + 10000;
+              localStorage.setItem('tsec_dev_credit_10000', 'true');
+              
+              setCoinHistory(prev => [
+                { id: Date.now() + 3, type: 'earn', title: 'Developer Boost Credit', amount: 10000, time: 'Today' },
+                ...prev
+              ]);
+              
+              setTimeout(() => {
+                pushNotificationHelper(setNotifications, "Developer Boost! 🪙", "You have been credited +10000 HubCoins!");
+                triggerConfettiHelper(setParticles);
+              }, 2500);
+            }
             setUser(defaultUser);
+            setEditName(defaultUser.name || '');
+            setEditLocation(defaultUser.location || 'India');
+            setEditAvatar(defaultUser.avatar || '⭐');
             localStorage.setItem('tsec_user', JSON.stringify(defaultUser));
+            setRewardCoins(defaultUser.coins);
+
+            // Check Daily Login Bonus for default user
+            const today = new Date().toISOString().split('T')[0];
+            const lastLoginDate = localStorage.getItem(`tsec_last_login_${defaultUser.email}`);
+            if (lastLoginDate !== today) {
+              setMissionLogin(true);
+              const bonusAmount = 10;
+              defaultUser.coins = (defaultUser.coins || 0) + bonusAmount;
+              localStorage.setItem('tsec_user', JSON.stringify(defaultUser));
+              localStorage.setItem(`tsec_last_login_${defaultUser.email}`, today);
+              setRewardCoins(defaultUser.coins);
+              
+              setCoinHistory(prev => [
+                { id: Date.now(), type: 'earn', title: 'Daily Login Bonus', amount: bonusAmount, time: 'Today' },
+                ...prev
+              ]);
+              
+              setTimeout(() => {
+                pushNotificationHelper(setNotifications, "Daily Login Bonus! 🪙", "You logged in today and automatically earned +10 Coins!");
+                triggerConfettiHelper(setParticles);
+              }, 1500);
+            } else {
+              setMissionLogin(true);
+            }
           }
           
           setTheme(localTheme);
@@ -364,11 +540,36 @@ export default function Home() {
       onTime: isWriter ? 97 : 100
     };
     setUser(newUser);
+    setRewardCoins(newUser.coins);
     localStorage.setItem('tsec_user', JSON.stringify(newUser));
     setLoginEmail('');
     setLoginPass('');
     setLoginModalOpen(false);
     pushNotification("Login Successful", `Welcome back, ${newUser.name}!`);
+
+    // Check Daily Login Bonus on login
+    const today = new Date().toISOString().split('T')[0];
+    const lastLoginDate = localStorage.getItem(`tsec_last_login_${newUser.email}`);
+    if (lastLoginDate !== today) {
+      setMissionLogin(true);
+      const bonusAmount = 10;
+      newUser.coins = (newUser.coins || 0) + bonusAmount;
+      localStorage.setItem('tsec_user', JSON.stringify(newUser));
+      localStorage.setItem(`tsec_last_login_${newUser.email}`, today);
+      setRewardCoins(newUser.coins);
+      
+      setCoinHistory(prev => [
+        { id: Date.now(), type: 'earn', title: 'Daily Login Bonus', amount: bonusAmount, time: 'Today' },
+        ...prev
+      ]);
+      
+      setTimeout(() => {
+        pushNotification("Daily Login Bonus! 🪙", "You logged in today and automatically earned +10 Coins!");
+        triggerConfettiHelper(setParticles);
+      }, 1000);
+    } else {
+      setMissionLogin(true);
+    }
   };
 
   const handleSignup = (e) => {
@@ -391,19 +592,62 @@ export default function Home() {
       onTime: role === 'writer' ? 97 : 100
     };
     setUser(newUser);
+    setRewardCoins(newUser.coins);
     localStorage.setItem('tsec_user', JSON.stringify(newUser));
     setSignupName('');
     setSignupEmail('');
     setSignupPass('');
     setSignupModalOpen(false);
     pushNotification("Sign Up Successful", `Welcome to TSEC Hub, ${signupName}!`);
+
+    // Check Daily Login Bonus on signup
+    const today = new Date().toISOString().split('T')[0];
+    setMissionLogin(true);
+    const bonusAmount = 10;
+    newUser.coins = (newUser.coins || 0) + bonusAmount;
+    localStorage.setItem('tsec_user', JSON.stringify(newUser));
+    localStorage.setItem(`tsec_last_login_${newUser.email}`, today);
+    setRewardCoins(newUser.coins);
+    
+    setCoinHistory(prev => [
+      { id: Date.now(), type: 'earn', title: 'Daily Login Bonus', amount: bonusAmount, time: 'Today' },
+      ...prev
+    ]);
+    
+    setTimeout(() => {
+      pushNotification("Daily Login Bonus! 🪙", "Welcome! You earned +10 Coins for your first login today!");
+      triggerConfettiHelper(setParticles);
+    }, 1000);
   };
 
   const handleLogout = () => {
     setUser(null);
+    setRewardCoins(0);
+    setMissionLogin(false);
     localStorage.removeItem('tsec_user');
     setActiveTab('home');
     pushNotification("Logged Out", "You have successfully signed out.");
+  };
+
+  const handleSaveProfile = (e) => {
+    e.preventDefault();
+    if (!editName.trim()) {
+      pushNotification("Error", "Name cannot be empty.");
+      return;
+    }
+    setUser(prev => {
+      if (!prev) return null;
+      const updatedUser = {
+        ...prev,
+        name: editName.trim(),
+        location: editLocation.trim(),
+        avatar: editAvatar
+      };
+      localStorage.setItem('tsec_user', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+    setIsEditingProfile(false);
+    pushNotification("Profile Updated", "Your profile details have been saved successfully!");
   };
 
   // Bookmark Toggle
@@ -907,48 +1151,67 @@ int main() {
       {/* ═══════════════════════════════════════════ */}
       <header className={`tsec-pill-nav ${scrolled ? 'tsec-pill-nav--scrolled' : ''}`}>
         <div className="nav__inner flex items-center justify-between py-3 px-6 md:px-8">
-          <div className="flex items-center gap-2.5 cursor-pointer select-none group" onClick={() => setActiveTab('home')}>
-            <span className="text-xl font-black bg-gradient-to-r from-sky-500 via-cyan-500 to-indigo-500 bg-clip-text text-transparent tracking-tight group-hover:opacity-95 transition-all">TSEC</span>
-            <span className="text-[9px] font-extrabold px-2.5 py-0.5 rounded-full border border-sky-500/10 bg-sky-500/5 text-sky-500 uppercase tracking-wider font-mono shadow-sm">Hub</span>
+          
+          {/* Left: Brand Logo & Navigation Links (LeetCode Style) */}
+          <div className="flex items-center gap-6">
+            <div className="flex items-center cursor-pointer select-none py-1 group" onClick={() => setActiveTab('home')}>
+              <img 
+                src="/logo-emblem.png" 
+                alt="Assignment Hub Emblem" 
+                className="h-6 w-auto object-contain transition-all duration-300 group-hover:scale-105" 
+              />
+            </div>
+
+            {/* Nav Links */}
+            <nav className="hidden lg:flex items-center gap-4.5 border-l border-[var(--border-color)] pl-5">
+              {[
+                { key: 'home', label: 'Home' },
+                { key: 'browse', label: 'Library', icon: <Folder size={12}/> },
+                { key: 'ai', label: 'AI Workspace', icon: <Bot size={12}/> },
+                { key: 'calendar', label: 'Deadlines', icon: <CalendarIcon size={12}/> },
+                { key: 'leaderboard', label: 'Standings', icon: <Trophy size={12}/> }
+              ].map(item => (
+                <span 
+                  key={item.key}
+                  onClick={() => {
+                    setActiveTab(item.key);
+                    if (item.key === 'browse') setBrowsePath([]);
+                  }} 
+                  className={`cursor-pointer text-[13px] font-medium px-1 py-1 transition-all relative select-none hover:text-[var(--text-primary)] ${
+                    activeTab === item.key 
+                      ? 'text-sky-500 font-bold border-b-2 border-sky-500' 
+                      : 'text-[var(--text-secondary)]'
+                  }`}
+                >
+                  {item.label}
+                </span>
+              ))}
+            </nav>
           </div>
 
-          {/* Nav Links */}
-          <nav className="hidden lg:flex items-center gap-5">
-            {[
-              { key: 'home', label: 'Home' },
-              { key: 'browse', label: 'Browse Library', icon: <Folder size={12}/> },
-              { key: 'ai', label: 'AI Workspace', icon: <Bot size={12}/> },
-              { key: 'calendar', label: 'Deadlines', icon: <CalendarIcon size={12}/> },
-              { key: 'leaderboard', label: 'Standings', icon: <Trophy size={12}/> },
-              { key: 'pricing', label: 'Pricing' }
-            ].map(item => (
-              <span 
-                key={item.key}
-                onClick={() => {
-                  setActiveTab(item.key);
-                  if (item.key === 'browse') setBrowsePath([]);
-                }} 
-                className={`cursor-pointer text-xs font-semibold flex items-center gap-1.5 px-5 py-2.5 rounded-full transition-all relative select-none ${
-                  activeTab === item.key 
-                    ? 'text-sky-500 bg-sky-500/5 font-bold' 
-                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                {item.icon}
-                {item.label}
-              </span>
-            ))}
-          </nav>
-
-          {/* Header Action Controls */}
+          {/* Right: Search, Notifications, Streak, Coins, Avatar, Premium */}
           <div className="flex items-center gap-3">
+            {/* Search Input Bar (LeetCode Style) */}
+            <div className="relative hidden md:block">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none text-[var(--text-muted)]">
+                <Search size={12} />
+              </span>
+              <input 
+                id="navbar-search-input"
+                type="text" 
+                placeholder="Search..." 
+                onFocus={() => setActiveTab('search')}
+                className="pl-7 pr-3 py-1.5 w-36 focus:w-48 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)]/50 focus:bg-[var(--bg-primary)] text-[11px] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-sky-500 transition-all duration-300"
+              />
+            </div>
+
             {/* Theme switcher */}
             <button 
               onClick={toggleTheme} 
               aria-label="Toggle theme"
-              className="p-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+              className="p-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
             >
-              {theme === 'dark' ? <Sun size={14}/> : <Moon size={14}/>}
+              {theme === 'dark' ? <Sun size={13}/> : <Moon size={13}/>}
             </button>
 
             {/* Notifications Menu */}
@@ -956,11 +1219,11 @@ int main() {
               <button 
                 onClick={() => setNotificationsOpen(!notificationsOpen)} 
                 aria-label="View notifications"
-                className="p-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all relative cursor-pointer shadow-sm hover:scale-105"
+                className="p-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all relative cursor-pointer shadow-sm hover:scale-105"
               >
-                <Bell size={14}/>
+                <Bell size={13}/>
                 {notifications.some(n => !n.read) && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 border border-[var(--bg-primary)] pulse-glow"></span>
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                 )}
               </button>
 
@@ -996,10 +1259,17 @@ int main() {
               )}
             </div>
 
+            {/* Streak indicator (LeetCode Fire Style) */}
+            {user && (
+              <div className="hidden sm:flex items-center gap-0.5 text-[11px] font-bold text-rose-500 bg-rose-500/5 px-2 py-1 rounded-lg border border-rose-500/10 font-mono select-none" title="Daily Streak">
+                <span>🔥</span>
+                <span>{user.streak || 0}</span>
+              </div>
+            )}
+
             {/* Auth / Dashboard standing */}
             {user ? (
               <div className="flex items-center gap-3 relative">
-                
                 {/* Avatar Button */}
                 <div className="relative">
                   <button 
@@ -1013,13 +1283,9 @@ int main() {
                   {/* Dropdown panel */}
                   {avatarDropdownOpen && (
                     <>
-                      {/* Invisible backdrop for outside click handler */}
                       <div className="fixed inset-0 z-40 cursor-default" onClick={() => setAvatarDropdownOpen(false)}></div>
-                      
-                      {/* Panel */}
                       <div className="absolute right-0 mt-3.5 w-64 rounded-2xl border border-[var(--border-color)] bg-white dark:bg-slate-950 p-4 shadow-xl z-50 animate-scale-in text-left text-xs font-medium text-[var(--text-secondary)]">
                         {user.role === 'writer' ? (
-                          // WRITER DROPDOWN (Anjali Mishra)
                           <div className="flex flex-col gap-3">
                             <div 
                               onClick={() => { setActiveTab('profile'); setAvatarDropdownOpen(false); }}
@@ -1039,7 +1305,6 @@ int main() {
 
                             <hr className="border-[var(--border-color)]" />
 
-                            {/* Writer Stats */}
                             <div className="grid grid-cols-2 gap-2 p-2 bg-[var(--bg-secondary)]/30 rounded-xl border border-[var(--border-color)]/50">
                               <button 
                                 onClick={() => { setActiveTab('rewards'); setAvatarDropdownOpen(false); }}
@@ -1073,7 +1338,6 @@ int main() {
 
                             <hr className="border-[var(--border-color)]" />
 
-                            {/* Writer Links */}
                             <div className="flex flex-col gap-1.5 font-bold">
                               <button 
                                 onClick={() => { setActiveTab('profile'); setAvatarDropdownOpen(false); }}
@@ -1138,7 +1402,6 @@ int main() {
                             </div>
                           </div>
                         ) : (
-                          // CLIENT DROPDOWN (Rahul Sharma / Student)
                           <div className="flex flex-col gap-3">
                             <div 
                               onClick={() => { setActiveTab('profile'); setAvatarDropdownOpen(false); }}
@@ -1158,7 +1421,6 @@ int main() {
 
                             <hr className="border-[var(--border-color)]" />
 
-                            {/* Client Links */}
                             <div className="flex flex-col gap-1.5 font-bold">
                               <button 
                                 onClick={() => { setActiveTab('profile'); setAvatarDropdownOpen(false); }}
@@ -1237,7 +1499,6 @@ int main() {
                     </>
                   )}
                 </div>
-
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -1256,6 +1517,15 @@ int main() {
               </div>
             )}
 
+            {/* Premium Button (LeetCode Style) */}
+            <button 
+              onClick={() => setActiveTab('pricing')}
+              className="hidden sm:inline-flex px-3.5 py-1.5 rounded-lg text-xs font-black text-amber-500 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500/50 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 select-none font-heading"
+            >
+              Premium
+            </button>
+
+            {/* Mobile Menu Button */}
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
               className="lg:hidden p-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-secondary)] cursor-pointer"
@@ -1282,6 +1552,8 @@ int main() {
             <span onClick={() => { setActiveTab('calendar'); setMobileMenuOpen(false); }} className="hover:text-sky-500 transition-all cursor-pointer">Submission Deadlines</span>
             <span onClick={() => { setActiveTab('leaderboard'); setMobileMenuOpen(false); }} className="hover:text-sky-500 transition-all cursor-pointer">Leaderboards</span>
             <span onClick={() => { setActiveTab('pricing'); setMobileMenuOpen(false); }} className="hover:text-sky-500 transition-all cursor-pointer">Pricing Plans</span>
+            <span onClick={() => { setActiveTab('rewards'); setMobileMenuOpen(false); }} className="hover:text-sky-500 transition-all cursor-pointer">Store / Rewards</span>
+            <span onClick={() => { setActiveTab('profile'); setMobileMenuOpen(false); }} className="hover:text-sky-500 transition-all cursor-pointer">My Profile</span>
             {user && (
               <span onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }} className="text-emerald-500 cursor-pointer">My Dashboard</span>
             )}
@@ -1337,7 +1609,7 @@ int main() {
                 { count: "50+", label: "Syllabus Subjects" },
                 { count: "1,000+", label: "Active Students" }
               ].map((stat, i) => (
-                <div key={i} className="text-center p-3 border-r border-[var(--border-color)]/60 last:border-r-0 md:block first:border-r last:border-0">
+                <div key={i} className="text-center p-3 md:border-r border-[var(--border-color)]/60 md:last:border-r-0">
                   <div className="text-3xl font-extrabold text-sky-500 font-heading tracking-tight">{stat.count}</div>
                   <div className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-wider mt-1.5">{stat.label}</div>
                 </div>
@@ -1386,7 +1658,7 @@ int main() {
                   <div 
                     key={i} 
                     onClick={() => { setActiveTab('search'); setSearchType(cat.type); }} 
-                    className="tsec-glass-card tsec-glass-card--hover flex flex-col items-center justify-between p-6 cursor-pointer text-center group h-36"
+                    className="tsec-glass-card tsec-glass-card--hover flex flex-col items-center justify-between p-6 cursor-pointer text-center group h-36 last:col-span-2 sm:last:col-span-1"
                   >
                     <span className="text-4xl mb-2 group-hover:scale-110 transition-transform duration-200">{cat.icon}</span>
                     <div>
@@ -1422,7 +1694,16 @@ int main() {
                     </button>
                   </div>
                   
-                  <div className="flex flex-col gap-4">
+                  <button 
+                    type="button"
+                    onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+                    className="w-full lg:hidden flex justify-between items-center py-2 px-3 bg-[var(--bg-secondary)]/50 border border-[var(--border-color)]/70 hover:bg-[var(--bg-secondary)] rounded-xl text-xs font-black text-[var(--text-secondary)] select-none cursor-pointer mb-2"
+                  >
+                    <span>🔍 {mobileFiltersOpen ? 'Hide Filters' : 'Show Filters'}</span>
+                    <span className="text-[10px]">{mobileFiltersOpen ? '▲' : '▼'}</span>
+                  </button>
+
+                  <div className={`${mobileFiltersOpen ? 'flex' : 'hidden'} lg:flex flex-col gap-4`}>
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase font-mono">Semester</label>
                       <select 
@@ -1650,27 +1931,27 @@ int main() {
                     <div 
                       key={item.id}
                       onClick={() => setActiveDetail(item)}
-                      className="flex items-center justify-between p-4.5 tsec-glass-card tsec-glass-card--hover cursor-pointer"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4.5 tsec-glass-card tsec-glass-card--hover cursor-pointer"
                     >
                       <div className="flex items-center gap-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0">
                           <FileText size={16}/>
                         </div>
-                        <div>
-                          <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)] tracking-tight">{item.title}</h4>
+                        <div className="text-left">
+                          <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)] tracking-tight leading-snug">{item.title}</h4>
                           <span className="text-[10px] text-[var(--text-secondary)] block mt-1 font-medium">{item.type} • Prof: {item.teacher || "N/A"}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 border-[var(--border-color)]/40 pt-3 sm:pt-0 shrink-0">
+                        <span className="text-[9px] font-mono border border-[var(--border-color)] bg-[var(--bg-primary)] px-2.5 py-1 rounded text-[var(--text-secondary)] font-bold">{item.size}</span>
                         <button 
                           onClick={(e) => { e.stopPropagation(); toggleBookmark(item.id); }} 
                           className={`p-1.5 rounded-full cursor-pointer transition-all ${
-                            bookmarks.includes(item.id) ? 'text-amber-500 bg-amber-500/5' : 'text-[var(--text-muted)]'
+                            bookmarks.includes(item.id) ? 'text-amber-500 bg-amber-500/5' : 'text-[var(--text-muted)] hover:bg-[var(--bg-secondary)]'
                           }`}
                         >
                           <Bookmark size={14} className={bookmarks.includes(item.id) ? 'fill-amber-500' : ''}/>
                         </button>
-                        <span className="text-[9px] font-mono border border-[var(--border-color)] bg-[var(--bg-primary)] px-2.5 py-1 rounded text-[var(--text-secondary)] font-bold">{item.size}</span>
                       </div>
                     </div>
                   ))
@@ -1798,7 +2079,7 @@ int main() {
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* Left Selector Toolkit */}
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible gap-2 pb-3 lg:pb-0 shrink-0 select-none no-scrollbar">
                 {[
                   { key: 'search', title: 'Semantic File Search', desc: 'Query in natural language', icon: <Search size={14}/> },
                   { key: 'summary', title: 'PDF Summarizer', desc: 'Generate quick outlines', icon: <FileText size={14}/> },
@@ -1809,10 +2090,10 @@ int main() {
                   <button 
                     key={item.key}
                     onClick={() => setAiActiveTab(item.key)}
-                    className={`flex items-center gap-3.5 p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                    className={`flex items-center gap-3.5 p-4 rounded-xl border text-left transition-all cursor-pointer shrink-0 lg:shrink-0 ${
                       aiActiveTab === item.key 
                         ? 'border-sky-500 bg-sky-500/5 text-sky-500 shadow-sm' 
-                        : 'border-[var(--border-color)] bg-[var(--card-bg)] hover:bg-[var(--bg-tertiary)] hover:translate-x-1'
+                        : 'border-[var(--border-color)] bg-[var(--card-bg)] hover:bg-[var(--bg-tertiary)]'
                     }`}
                   >
                     <div className="p-2 rounded-lg bg-sky-500/5 text-sky-500 shrink-0">
@@ -1820,7 +2101,7 @@ int main() {
                     </div>
                     <div>
                       <div className="font-bold text-xs text-[var(--text-primary)] leading-none">{item.title}</div>
-                      <div className="text-[9px] text-[var(--text-muted)] mt-1 font-medium leading-none">{item.desc}</div>
+                      <div className="text-[9px] text-[var(--text-muted)] mt-1 font-medium leading-none hidden lg:block">{item.desc}</div>
                     </div>
                   </button>
                 ))}
@@ -2897,8 +3178,8 @@ int main() {
               ))}
             </div>
 
-            <div className="tsec-glass-card overflow-hidden">
-              <table className="w-full text-left border-collapse text-xs">
+            <div className="tsec-glass-card overflow-x-auto w-full">
+              <table className="w-full text-left border-collapse text-xs min-w-[500px]">
                 <thead>
                   <tr className="border-b border-[var(--border-color)] bg-[var(--bg-secondary)]/50 text-[var(--text-muted)] font-bold uppercase text-[9px] font-mono tracking-wider">
                     <th className="py-3 px-5">Rank</th>
@@ -3075,12 +3356,12 @@ int main() {
                         const item = db.find(r => r.id === id);
                         if (!item) return null;
                         return (
-                          <div key={id} onClick={() => setActiveDetail(item)} className="p-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)]/30 hover:border-sky-500/40 cursor-pointer flex justify-between items-center transition-all">
-                            <div>
-                              <div className="text-xs font-bold text-[var(--text-primary)]">{item.title}</div>
-                              <span className="text-[9px] text-[var(--text-secondary)] block mt-0.5 font-medium">{item.subject} • {item.type}</span>
+                          <div key={id} onClick={() => setActiveDetail(item)} className="p-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)]/30 hover:border-sky-500/40 cursor-pointer flex justify-between items-center gap-3 transition-all">
+                            <div className="min-w-0 flex-grow text-left">
+                              <div className="text-xs font-bold text-[var(--text-primary)] truncate">{item.title}</div>
+                              <span className="text-[9px] text-[var(--text-secondary)] block mt-0.5 font-medium truncate">{item.subject} • {item.type}</span>
                             </div>
-                            <span className="text-[9px] font-mono bg-[var(--bg-primary)] px-2 py-0.5 rounded border border-[var(--border-color)] text-[var(--text-secondary)] font-bold">{item.size}</span>
+                            <span className="text-[9px] font-mono bg-[var(--bg-primary)] px-2 py-0.5 rounded border border-[var(--border-color)] text-[var(--text-secondary)] font-bold shrink-0">{item.size}</span>
                           </div>
                         );
                       })
@@ -3152,8 +3433,155 @@ int main() {
           const currentProgressPercent = Math.floor(((rewardCoins % 500) * 100) / 500);
           const calculatedLevel = Math.floor(rewardCoins / 500) + 1;
           const currentProgressVal = rewardCoins % 500;
+
+          // Define the LeetCode Store items
+          const storeItems = [
+            {
+              id: 'ticket',
+              title: 'Time Travel Ticket',
+              desc: 'For Daily Streak Protection',
+              price: 70,
+              badgeText: 'Travel Back in Time to Finish 1 Missing Challenge',
+              graphic: (
+                <div className="relative w-full h-44 flex flex-col justify-center items-center bg-[#282828] p-4 border-b border-[var(--border-color)]">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-4xl shadow-inner select-none animate-pulse">
+                    🛡️
+                  </div>
+                  <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider mt-4 text-center px-4 leading-normal select-none">
+                    Travel Back in Time to Finish 1 Missing Challenge
+                  </span>
+                </div>
+              )
+            },
+            {
+              id: 'premium_30',
+              title: '30-Day Premium Subscription',
+              desc: 'Premium Developer Subscription',
+              price: 500,
+              badgeText: 'Redeem Premium with HubCoins',
+              graphic: (
+                <div className="relative w-full h-44 flex flex-col justify-center items-center bg-gradient-to-br from-amber-500/15 via-orange-950/20 to-amber-950/30 p-4 border-b border-[var(--border-color)]">
+                  <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-4xl shadow-inner select-none">
+                    👑
+                  </div>
+                  <span className="text-2xl font-black uppercase tracking-tight text-amber-500 mt-2 select-none">
+                    Redeem
+                  </span>
+                  <span className="text-[17px] font-extrabold uppercase tracking-tight text-white mt-0.5 select-none">
+                    Premium
+                  </span>
+                  <span className="text-[8px] font-bold text-zinc-400 font-mono mt-1 select-none">
+                    with HubCoins
+                  </span>
+                </div>
+              )
+            },
+            {
+              id: 'amazon_voucher',
+              title: 'Amazon Voucher',
+              desc: '₹100 Gift Card Voucher',
+              price: 500,
+              badgeText: 'Redeem Gift Card Voucher',
+              graphic: (
+                <div className="relative w-full h-44 flex flex-col justify-center items-center bg-gradient-to-br from-rose-500/15 via-pink-950/20 to-rose-950/30 p-4 border-b border-[var(--border-color)]">
+                  <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-4xl shadow-inner select-none">
+                    🎁
+                  </div>
+                  <span className="text-[11px] font-black uppercase tracking-wider text-rose-400 mt-4 text-center px-4 leading-normal select-none">
+                    Redeem Your Gift Card
+                  </span>
+                </div>
+              )
+            },
+            {
+              id: 'tshirt',
+              title: 'Hub T-Shirt',
+              desc: 'Redeem our high quality t-shirts',
+              price: 2000,
+              badgeText: 'Redeem Your Free T-Shirt',
+              graphic: (
+                <div className="relative w-full h-44 flex flex-col justify-center items-center bg-[#282828] p-4 border-b border-[var(--border-color)]">
+                  <div className="text-7xl filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none">
+                    👕
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mt-3 text-center leading-normal select-none">
+                    Redeem Your Free T-Shirt
+                  </span>
+                </div>
+              )
+            },
+            {
+              id: 'cap',
+              title: 'Hub Cap',
+              desc: 'Comes in black or white colors',
+              price: 1500,
+              badgeText: 'Hub Cap',
+              graphic: (
+                <div className="relative w-full h-44 flex flex-col justify-center items-center bg-[#282828] p-4 border-b border-[var(--border-color)]">
+                  <div className="text-7xl filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none animate-float">
+                    🧢
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mt-4 select-none">
+                    Hub Cap
+                  </span>
+                </div>
+              )
+            },
+            {
+              id: 'badge',
+              title: 'Exclusive Badge',
+              desc: 'Explorer gold contributor badge',
+              price: 250,
+              badgeText: 'Explorer Gold Contributor Badge',
+              graphic: (
+                <div className="relative w-full h-44 flex flex-col justify-center items-center bg-gradient-to-br from-indigo-500/15 via-violet-950/20 to-indigo-950/30 p-4 border-b border-[var(--border-color)]">
+                  <div className="w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-4xl shadow-inner select-none">
+                    🏅
+                  </div>
+                  <span className="text-[10px] font-black uppercase text-indigo-400 tracking-wider mt-4 text-center px-4 leading-normal select-none">
+                    Exclusive Gold Contributor Badge
+                  </span>
+                </div>
+              )
+            },
+            {
+              id: 'credit',
+              title: 'Free Assignment Credit',
+              desc: 'Waiver code for one assignment',
+              price: 1000,
+              badgeText: 'Free Assignment Credit',
+              graphic: (
+                <div className="relative w-full h-44 flex flex-col justify-center items-center bg-gradient-to-br from-sky-500/15 via-blue-950/20 to-sky-950/30 p-4 border-b border-[var(--border-color)]">
+                  <div className="w-16 h-16 rounded-full bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-4xl shadow-inner select-none">
+                    📝
+                  </div>
+                  <span className="text-[10px] font-black uppercase text-sky-400 tracking-wider mt-4 text-center px-4 leading-normal select-none">
+                    Free Assignment Waiver Credit
+                  </span>
+                </div>
+              )
+            },
+            {
+              id: 'theme',
+              title: 'Premium Theme',
+              desc: 'Custom developer profile styles',
+              price: 300,
+              badgeText: 'Premium Theme Styles',
+              graphic: (
+                <div className="relative w-full h-44 flex flex-col justify-center items-center bg-gradient-to-br from-fuchsia-500/15 via-purple-950/20 to-fuchsia-950/30 p-4 border-b border-[var(--border-color)]">
+                  <div className="w-16 h-16 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/40 flex items-center justify-center text-4xl shadow-inner select-none">
+                    🎨
+                  </div>
+                  <span className="text-[10px] font-black uppercase text-fuchsia-400 tracking-wider mt-4 text-center px-4 leading-normal select-none">
+                    Premium Custom Theme Styles
+                  </span>
+                </div>
+              )
+            }
+          ];
+
           return (
-            <div className="animate-fade-in py-6 max-w-5xl mx-auto px-4 sm:px-6 w-full flex flex-col gap-6 text-left relative">
+            <div className="animate-fade-in w-full flex flex-col text-left relative">
               <style>{`
                 @keyframes float {
                   0%, 100% { transform: translateY(0px) rotate(0deg); }
@@ -3191,196 +3619,454 @@ int main() {
                 </div>
               ))}
 
-              {/* 1. Hero Section */}
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 via-yellow-500 to-amber-600 p-6 sm:p-8 text-white shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 border border-yellow-400/20">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent pointer-events-none"></div>
-
-                <div className="flex-grow flex flex-col gap-3 z-10">
-                  <div className="flex items-center gap-3.5">
-                    <span className="text-4xl animate-float select-none">🪙</span>
-                    <div>
-                      <h1 className="text-3xl sm:text-4xl font-black font-sans leading-none tracking-tight">
-                        {rewardCoins.toLocaleString()} <span className="text-lg font-bold opacity-90">Coins</span>
-                      </h1>
-                      <p className="text-xs font-bold opacity-90 font-mono mt-1">Level {calculatedLevel} • Explorer</p>
-                    </div>
-                  </div>
-
-                  <div className="w-full max-w-sm mt-2 flex flex-col gap-1.5">
-                    <div className="flex justify-between text-[10.5px] font-bold opacity-95">
-                      <span>Progress to Level {calculatedLevel + 1} / Reward Card</span>
-                      <span>{currentProgressPercent}%</span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-white/20 overflow-hidden backdrop-blur-sm border border-white/10">
-                      <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${currentProgressPercent}%` }}></div>
-                    </div>
-                    <span className="text-[9px] opacity-75 mt-0.5 font-mono block text-right">{currentProgressVal} / 500 Coins</span>
-                  </div>
+              {/* 1. LeetCode-style Store Hero Banner */}
+              <div className="w-full bg-gradient-to-b from-[#18181b] to-[#09090b] text-white py-12 px-6 md:px-12 relative flex flex-col items-center border-b border-zinc-800">
+                
+                {/* Points indicator top right */}
+                <div className="absolute top-4 right-6 flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 text-amber-500 font-bold px-3 py-1 rounded-lg text-[11px] font-mono select-none">
+                  HubCoins: <span className="text-white ml-1">🪙 {rewardCoins.toLocaleString()}</span>
                 </div>
 
-                <div className="flex gap-3 w-full sm:w-auto z-10">
+                {/* Big Center Logo & Text */}
+                <div className="flex flex-col items-center mt-4">
+                  <img 
+                    src="/logo-emblem.png" 
+                    alt="Assignment Hub Logo" 
+                    className="h-16 w-auto object-contain transition-all duration-300 hover:scale-105 select-none" 
+                  />
+                  <h1 className="text-2xl md:text-3xl font-bold font-sans mt-3 text-white tracking-tight">
+                    Assignment Hub <span className="font-light text-zinc-400">Store</span>
+                  </h1>
+                  <p className="text-zinc-400 text-xs md:text-sm text-center max-w-md mt-2 font-medium">
+                    Shop in our store or redeem our products for free by using HubCoins.
+                  </p>
+                </div>
+
+                {/* Sub-tab actions pills (LeetCode layout) */}
+                <div className="flex flex-wrap justify-center gap-3 mt-8 select-none">
                   <button 
-                    onClick={() => {
-                      const storeSection = document.getElementById('redeem-store');
-                      if (storeSection) {
-                        storeSection.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }}
-                    className="flex-1 sm:flex-initial px-5 py-3 rounded-xl bg-white text-amber-600 font-extrabold text-xs shadow-md hover:bg-amber-50 transition-all active:scale-95 cursor-pointer text-center font-heading"
+                    onClick={() => setStoreSubTab('redeem')}
+                    className={`px-5 py-2 rounded-full font-extrabold text-xs cursor-pointer transition-all ${
+                      storeSubTab === 'redeem'
+                        ? 'bg-white text-zinc-950 shadow-md scale-105 border border-transparent'
+                        : 'border border-zinc-600 text-zinc-300 hover:bg-white/5 hover:text-white'
+                    }`}
                   >
-                    Redeem Rewards
+                    🎁 Redeem
                   </button>
                   <button 
-                    onClick={() => {
-                      const missionsSection = document.getElementById('daily-missions');
-                      if (missionsSection) {
-                        missionsSection.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }}
-                    className="flex-1 sm:flex-initial px-5 py-3 rounded-xl bg-amber-700/20 border border-white/30 text-white font-extrabold text-xs hover:bg-amber-700/40 transition-all active:scale-95 cursor-pointer text-center font-heading"
+                    onClick={() => setStoreSubTab('earn')}
+                    className={`px-5 py-2 rounded-full font-extrabold text-xs cursor-pointer transition-all ${
+                      storeSubTab === 'earn'
+                        ? 'bg-white text-zinc-950 shadow-md scale-105 border border-transparent'
+                        : 'border border-zinc-600 text-zinc-300 hover:bg-white/5 hover:text-white'
+                    }`}
                   >
-                    Earn More
+                    ➕ Earn HubCoins
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('pricing')}
+                    className="px-5 py-2 border border-dashed border-zinc-600 hover:border-zinc-400 text-zinc-300 hover:text-white rounded-full font-extrabold text-xs cursor-pointer flex items-center gap-1 transition-all"
+                  >
+                    ⭐ Premium
+                  </button>
+                  <button 
+                    onClick={() => setStoreSubTab('level')}
+                    className={`px-5 py-2 rounded-full font-extrabold text-xs cursor-pointer transition-all ${
+                      storeSubTab === 'level'
+                        ? 'bg-white text-zinc-950 shadow-md scale-105 border border-transparent'
+                        : 'border border-zinc-600 text-zinc-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    🏆 Level Progress
+                  </button>
+                  <button 
+                    onClick={() => setStoreSubTab('history')}
+                    className={`px-5 py-2 rounded-full font-extrabold text-xs cursor-pointer transition-all ${
+                      storeSubTab === 'history'
+                        ? 'bg-white text-zinc-950 shadow-md scale-105 border border-transparent'
+                        : 'border border-zinc-600 text-zinc-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    📨 View Orders
                   </button>
                 </div>
               </div>
 
-              {/* 2. Quick Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { title: "Total Coins", value: rewardCoins.toLocaleString(), emoji: "🪙", color: "text-amber-500 bg-amber-500/5 border-amber-500/10" },
-                  { title: "Current Streak", value: `${rewardStreak} Days`, emoji: "🔥", color: "text-rose-500 bg-rose-500/5 border-rose-500/10" },
-                  { title: "Level", value: calculatedLevel.toString(), emoji: "🏆", color: "text-purple-500 bg-purple-500/5 border-purple-500/10" },
-                  { title: "Reward", value: dynamicRewards.toString(), emoji: "🎁", color: "text-emerald-500 bg-emerald-500/5 border-emerald-500/10" }
-                ].map((stat, idx) => (
-                  <div key={idx} className={`p-4 rounded-2xl border bg-white dark:bg-slate-950 flex flex-col gap-1.5 shadow-sm text-left ${stat.color}`}>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-[var(--text-muted)] font-heading">{stat.title}</span>
-                      <span className="text-lg select-none">{stat.emoji}</span>
-                    </div>
-                    <span className="text-lg sm:text-xl font-black text-[var(--text-primary)] leading-tight">{stat.value}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                {/* Left Column (8 grid) */}
-                <div className="lg:col-span-8 flex flex-col gap-6">
-                  
-                  {/* 3. How to Earn Coins */}
-                  <div id="daily-missions" className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 className="font-extrabold text-sm text-[var(--text-primary)]">How to Earn Coins</h4>
-                        <p className="text-[10.5px] text-[var(--text-muted)] mt-0.5 font-bold">Standard Contributor Tasks</p>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-500/20 bg-sky-500/5 text-sky-500 uppercase tracking-wider font-mono">
-                        Earn
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col gap-3">
-                      {[
-                        { id: 'login', title: 'Login Today', points: 10, done: missionLogin, setDone: setMissionLogin },
-                        { id: 'assignment', title: 'Order 1 Assignment', points: 10, done: missionAssignment, setDone: setMissionAssignment },
-                        { id: 'payment', title: 'Payment', points: 10, done: missionDeadline, setDone: setMissionDeadline },
-                        { id: 'review', title: 'Review Sharing (How we help you)', points: 10, done: missionRate, setDone: setMissionRate }
-                      ].map(mission => (
-                        <div 
-                          key={mission.id} 
-                          onClick={() => {
-                            if (!mission.done) {
-                              mission.setDone(true);
-                              addCoins(mission.points, mission.title);
-                            }
-                          }}
-                          className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
-                            mission.done 
-                              ? 'bg-emerald-500/5 border-emerald-500/20 opacity-80' 
-                              : 'bg-[var(--bg-secondary)]/30 border-[var(--border-color)] hover:border-sky-500/40 hover:bg-[var(--bg-secondary)]/50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className={`text-base select-none ${mission.done ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-700'}`}>
-                              {mission.done ? '✅' : '⬜'}
-                            </span>
-                            <span className={`text-xs font-bold ${mission.done ? 'text-[var(--text-primary)] line-through opacity-70' : 'text-[var(--text-primary)]'}`}>
-                              {mission.title}
-                            </span>
-                          </div>
-                          <span className={`text-xs font-extrabold font-mono ${mission.done ? 'text-emerald-500' : 'text-sky-500'}`}>
-                            +{mission.points} Coins
-                          </span>
+              {/* 2. Sub-tab Content Area */}
+              <div className="py-10 max-w-6xl mx-auto px-4 sm:px-6 w-full text-left">
+                
+                {/* ─── REDEEM STORE GRID SUB-TAB ─── */}
+                {storeSubTab === 'redeem' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-scale-in">
+                    {storeItems.map((item) => (
+                      <div 
+                        key={item.id} 
+                        className="bg-white dark:bg-zinc-900 border border-[var(--border-color)] rounded-2xl overflow-hidden flex flex-col justify-between shadow-sm transition-all duration-300 hover:scale-[1.03] hover:shadow-lg group"
+                      >
+                        {/* Upper graphical area (LeetCode Style dark background container) */}
+                        <div className="relative overflow-hidden w-full bg-[#18181b] border-b border-[var(--border-color)] text-white">
+                          {item.graphic}
                         </div>
-                      ))}
-                    </div>
+
+                        {/* Lower text & checkout area */}
+                        <div className="p-4 flex items-center justify-between gap-4">
+                          <div className="text-left overflow-hidden">
+                            <h5 className="font-extrabold text-xs text-zinc-900 dark:text-white truncate group-hover:text-sky-500 transition-colors">
+                              {item.title}
+                            </h5>
+                            <p className="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-0.5 font-medium truncate">
+                              {item.desc}
+                            </p>
+                          </div>
+                          
+                          {/* Cost Button */}
+                          <button
+                            onClick={() => {
+                              if (rewardCoins >= item.price) {
+                                setRewardCoins(prev => prev - item.price);
+                                pushNotification("Redeem Success", `Successfully purchased ${item.title}!`);
+                                setCoinHistory(prev => [
+                                  { id: Date.now(), type: 'spend', title: `Redeemed ${item.title}`, amount: item.price, time: 'Today' },
+                                  ...prev
+                                ]);
+                              } else {
+                                pushNotification("Insufficient Balance", `You need ${item.price - rewardCoins} more coins to purchase this.`);
+                              }
+                            }}
+                            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black text-amber-600 dark:text-amber-500 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 hover:border-amber-500/40 transition-all cursor-pointer shadow-sm active:scale-95 select-none font-mono"
+                          >
+                            <span>{item.price.toLocaleString()}</span>
+                            <span>🪙</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
+                )}
 
-                  {/* 5. Redeem Store */}
-                  <div id="redeem-store" className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm">
-                    <div>
-                      <h4 className="font-extrabold text-sm text-[var(--text-primary)]">Redeem Store</h4>
-                      <p className="text-[10.5px] text-[var(--text-muted)] mt-0.5">Use your accumulated coins to purchase exclusive vouchers and benefits.</p>
-                    </div>
+                {/* ─── EARN COINS SUB-TAB (LeetCode style Check-in & Contribution grid) ─── */}
+                {storeSubTab === 'earn' && (
+                  <div className="flex flex-col gap-10 animate-scale-in text-center">
+                    
+                    {/* Check-in Missions Category */}
+                    <div className="flex flex-col gap-5">
+                      <h3 className="text-[13px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider font-mono text-center">
+                        Check-in Missions
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                        {[
+                          {
+                            id: 'login',
+                            title: 'Daily Check-in',
+                            points: 10,
+                            done: missionLogin,
+                            action: () => {}
+                          },
+                          {
+                            id: 'streak_30',
+                            title: '30-day Streak Check-in',
+                            points: 30,
+                            done: rewardStreak >= 30,
+                            action: () => {
+                              if (rewardStreak >= 30) {
+                                addCoins(30, '30-day Streak check-in');
+                                pushNotification("Streak Reward", "Successfully claimed 30-day streak bonus!");
+                              } else {
+                                pushNotification("Streak Mission", `Keep your streak going! Current streak: ${rewardStreak}/30 Days.`);
+                              }
+                            },
+                            customBtnText: rewardStreak >= 30 ? 'Claim Now' : `${rewardStreak}/30 Days`
+                          },
+                          {
+                            id: 'daily_challenge',
+                            title: 'Complete Daily Challenge',
+                            points: 10,
+                            done: missionDeadline,
+                            action: () => {
+                              if (!missionDeadline) {
+                                setMissionDeadline(true);
+                                addCoins(10, 'Complete Daily Challenge');
+                              }
+                            }
+                          },
+                          {
+                            id: 'weekly_premium',
+                            title: 'Completing Weekly Premium Challenges',
+                            points: 35,
+                            done: missionRate,
+                            action: () => {
+                              if (!missionRate) {
+                                setMissionRate(true);
+                                addCoins(35, 'Completing Weekly Premium Challenges');
+                              }
+                            }
+                          }
+                        ].map((mission) => (
+                          <div 
+                            key={mission.id} 
+                            className="bg-white dark:bg-zinc-900 border border-[var(--border-color)] rounded-xl p-4 shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-md hover:scale-[1.02]"
+                          >
+                            {/* Left: Coin Icon & Reward */}
+                            <div className="flex flex-col items-center justify-center border-r border-[var(--border-color)] pr-4 shrink-0 w-16 text-center">
+                              <span className="text-2xl select-none mb-1">🪙</span>
+                              <span className="text-xs font-black font-mono text-amber-500">+{mission.points}</span>
+                            </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {[
-                        { title: 'Amazon Voucher', desc: '₹100 Gift Card', price: 500, emoji: '🎁' },
-                        { title: 'Premium Theme', desc: 'Custom developer profile styles', price: 300, emoji: '🎨' },
-                        { title: 'Free Assignment Credit', desc: 'Waiver code for one assignment', price: 1000, emoji: '📝' },
-                        { title: 'Exclusive Badge', desc: 'Explorer gold contributor badge', price: 250, emoji: '🏅' }
-                      ].map((item, idx) => (
-                        <div key={idx} className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)]/10 hover:bg-[var(--bg-secondary)]/30 transition-all flex flex-col justify-between gap-4 shadow-sm text-left">
-                          <div className="flex items-start gap-3">
-                            <span className="text-3xl select-none">{item.emoji}</span>
-                            <div>
-                              <h5 className="font-extrabold text-xs text-[var(--text-primary)]">{item.title}</h5>
-                              <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 font-medium leading-normal">{item.desc}</p>
+                            {/* Right: Title & Action Button */}
+                            <div className="flex-grow flex flex-col justify-between">
+                              <h5 className="font-extrabold text-[12px] text-zinc-900 dark:text-white leading-normal min-h-[32px]">
+                                {mission.title}
+                              </h5>
+                              <div>
+                                {mission.done ? (
+                                  <button 
+                                    disabled
+                                    className="mt-2.5 px-3 py-1.5 border border-emerald-500 bg-emerald-500/5 text-emerald-500 rounded text-[9px] font-black cursor-default transition-all flex items-center justify-center gap-1 w-full max-w-[125px] font-heading uppercase"
+                                  >
+                                    ✅ Claimed
+                                  </button>
+                                ) : (
+                                  <button 
+                                    onClick={mission.action}
+                                    className="mt-2.5 px-3 py-1.5 border border-dashed border-amber-500 text-amber-500 hover:bg-amber-500/5 hover:text-amber-600 rounded text-[9px] font-black cursor-pointer transition-all flex items-center justify-center gap-1 w-full max-w-[125px] font-heading uppercase"
+                                  >
+                                    {mission.customBtnText || 'Go to mission ➔'}
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <div className="flex justify-between items-center mt-2">
-                            <span className="text-xs font-black font-mono text-amber-500">🪙 {item.price} Coins</span>
-                            <button
-                              onClick={() => {
-                                if (rewardCoins >= item.price) {
-                                  setRewardCoins(prev => prev - item.price);
-                                  pushNotification("Redeem Success", `Successfully purchased ${item.title}!`);
-                                  setCoinHistory(prev => [
-                                    { id: Date.now(), type: 'spend', title: `Redeemed ${item.title}`, amount: item.price, time: 'Today' },
-                                    ...prev
-                                  ]);
-                                } else {
-                                  pushNotification("Insufficient Balance", `You need ${item.price - rewardCoins} more coins to purchase this.`);
-                                }
-                              }}
-                              className={`px-3 py-1.5 rounded-lg font-extrabold text-[10.5px] cursor-pointer transition-all active:scale-95 ${
-                                rewardCoins >= item.price
-                                  ? 'bg-sky-500 text-white hover:bg-sky-600 shadow-sm'
-                                  : 'bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-600 border border-[var(--border-color)] cursor-not-allowed'
-                              }`}
-                            >
-                              Redeem
-                            </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Contribution Missions Category */}
+                    <div className="flex flex-col gap-5 mt-4">
+                      <h3 className="text-[13px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider font-mono text-center">
+                        Contribution Missions
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                        {[
+                          {
+                            id: 'testcase',
+                            title: 'Contribute a Testcase / Assignment Notes',
+                            points: 100,
+                            done: missionAssignment,
+                            action: () => {
+                              setActiveTab('upload');
+                              pushNotification("Mission", "Upload a document to complete this mission!");
+                            }
+                          },
+                          {
+                            id: 'question',
+                            title: 'Contribute an AI Assistant Prompt',
+                            points: 1000,
+                            done: false,
+                            action: () => {
+                              setActiveTab('ai');
+                              pushNotification("Mission", "Use the AI Assistant Workspace to contribute prompts!");
+                            }
+                          },
+                          {
+                            id: 'feedback',
+                            title: 'File Content Issue to Feedback Repo',
+                            points: 100,
+                            done: false,
+                            action: () => {
+                              pushNotification("Feedback Repo", "Feedback forms can be submitted via Settings > Feedback.");
+                            }
+                          },
+                          {
+                            id: 'violation',
+                            title: 'Report a Deadline / Contest Violation',
+                            points: 100,
+                            done: false,
+                            action: () => {
+                              setActiveTab('calendar');
+                              pushNotification("Mission", "Report discrepancies in assignment deadlines to administrators!");
+                            }
+                          }
+                        ].map((mission) => (
+                          <div 
+                            key={mission.id} 
+                            className="bg-white dark:bg-zinc-900 border border-[var(--border-color)] rounded-xl p-4 shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-md hover:scale-[1.02]"
+                          >
+                            {/* Left: Coin Icon & Reward */}
+                            <div className="flex flex-col items-center justify-center border-r border-[var(--border-color)] pr-4 shrink-0 w-16 text-center">
+                              <span className="text-2xl select-none mb-1">🪙</span>
+                              <span className="text-xs font-black font-mono text-amber-500">+{mission.points}</span>
+                            </div>
+
+                            {/* Right: Title & Action Button */}
+                            <div className="flex-grow flex flex-col justify-between">
+                              <h5 className="font-extrabold text-[12px] text-zinc-900 dark:text-white leading-normal min-h-[32px]">
+                                {mission.title}
+                              </h5>
+                              <div>
+                                {mission.done ? (
+                                  <button 
+                                    disabled
+                                    className="mt-2.5 px-3 py-1.5 border border-emerald-500 bg-emerald-500/5 text-emerald-500 rounded text-[9px] font-black cursor-default transition-all flex items-center justify-center gap-1 w-full max-w-[125px] font-heading uppercase"
+                                  >
+                                    ✅ Claimed
+                                  </button>
+                                ) : (
+                                  <button 
+                                    onClick={mission.action}
+                                    className="mt-2.5 px-3 py-1.5 border border-dashed border-amber-500 text-amber-500 hover:bg-amber-500/5 hover:text-amber-600 rounded text-[9px] font-black cursor-pointer transition-all flex items-center justify-center gap-1 w-full max-w-[125px] font-heading uppercase"
+                                  >
+                                    Go to mission ➔
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+
+                {/* ─── LEVEL PROGRESS SUB-TAB ─── */}
+                {storeSubTab === 'level' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-scale-in items-start">
+                    {/* Level Progress details */}
+                    <div className="lg:col-span-8 flex flex-col gap-6">
+                      <div className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm">
+                        <h4 className="font-extrabold text-[10.5px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Level System</h4>
+                        <div className="flex items-center gap-3.5 py-1">
+                          <div className="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center text-xl select-none">
+                            🏆
+                          </div>
+                          <div className="text-left">
+                            <h5 className="font-black text-xs text-[var(--text-primary)]">Level {calculatedLevel} Explorer</h5>
+                            <p className="text-[10px] text-[var(--text-muted)] font-semibold mt-0.5 font-heading">Progressing to next reward category</p>
                           </div>
                         </div>
-                      ))}
+
+                        <div className="p-4 bg-[var(--bg-secondary)]/40 border border-[var(--border-color)] rounded-xl text-[10.5px] font-semibold text-[var(--text-secondary)] flex flex-col gap-2.5 text-left">
+                          <div className="flex justify-between font-bold">
+                            <span>Next Level</span>
+                            <span className="text-amber-500">{500 - currentProgressVal} Coins Needed</span>
+                          </div>
+                          <hr className="border-[var(--border-color)]/50 my-1" />
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-500 select-none">✔</span>
+                            <span>Bronze Profile Frame</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-500 select-none">✔</span>
+                            <span>Faster Support</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-500 select-none">✔</span>
+                            <span>New Badge</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Achievements */}
+                      <div className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm text-left">
+                        <h4 className="font-extrabold text-[10.5px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Achievements</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {[
+                            { title: 'First Assignment', desc: 'Completed', medal: '🥉', percent: 100 },
+                            { title: '10 Assignments', desc: 'Completed', medal: '🥈', percent: 100 },
+                            { title: '100 Assignments', desc: '60%', medal: '🥇', percent: 60 }
+                          ].map((item, idx) => (
+                            <div key={idx} className="flex flex-col justify-between gap-3 p-3 rounded-xl border border-[var(--border-color)]/60 bg-[var(--bg-secondary)]/15">
+                              <div className="flex justify-between items-start">
+                                <span className="text-2xl select-none">{item.medal}</span>
+                                <span className="text-[9.5px] text-[var(--text-muted)] font-mono font-bold">{item.desc}</span>
+                              </div>
+                              <div className="text-left">
+                                <span className="text-[10.5px] font-bold text-[var(--text-primary)] block leading-tight">{item.title}</span>
+                              </div>
+                              {item.percent < 100 && (
+                                <div className="h-1 w-full bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden mt-1">
+                                  <div className="h-full bg-purple-500 rounded-full" style={{ width: `${item.percent}%` }}></div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Leaderboard Column */}
+                    <div className="lg:col-span-4 p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm text-left">
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-extrabold text-[10.5px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Leaderboard</h4>
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-amber-500/25 bg-amber-500/5 text-amber-500 font-mono">500+ Club</span>
+                      </div>
+
+                      <div className="flex flex-col gap-2.5">
+                        {(() => {
+                          const leaderboardData = [];
+                          if (user) {
+                            leaderboardData.push({
+                              rank: 1,
+                              name: `${user.name} (You)`,
+                              coins: rewardCoins,
+                              rewards: dynamicRewards,
+                              avatar: "⭐",
+                              isUser: true
+                            });
+                          }
+
+                          if (leaderboardData.length === 0) {
+                            return (
+                              <div className="text-center py-4 text-[var(--text-muted)] text-[10px] font-bold">
+                                No contributors found
+                              </div>
+                            );
+                          }
+
+                          return leaderboardData.map((student, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl border bg-sky-500/5 border-sky-500/20 transition-all">
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-xs font-mono font-black text-sky-500 w-4 text-center">#{student.rank}</span>
+                                <span className="text-sm select-none">{student.avatar}</span>
+                                <div className="text-left">
+                                  <span className="text-[11px] font-bold block text-sky-500">{student.name}</span>
+                                  <span className="text-[9px] text-[var(--text-muted)] font-semibold font-mono">{student.coins.toLocaleString()} Coins</span>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-0.5">
+                                <span className="text-[10px] font-black text-amber-500 bg-amber-500/5 px-2 py-0.5 rounded-md font-mono border border-amber-500/10">
+                                  🎁 {student.rewards} Card{student.rewards !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                      
+                      <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl text-[10px] font-bold text-amber-600 dark:text-amber-500 text-center font-mono mt-1">
+                        Earn 500 Coins to get your next Reward Card!
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  {/* 4. Coin History */}
-                  <div className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm">
+                {/* ─── ORDER HISTORY SUB-TAB ─── */}
+                {storeSubTab === 'history' && (
+                  <div className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm max-w-3xl mx-auto animate-scale-in">
                     <div>
-                      <h4 className="font-extrabold text-sm text-[var(--text-primary)]">Coin History</h4>
-                      <p className="text-[10.5px] text-[var(--text-muted)] mt-0.5">Recent coins transactions details.</p>
+                      <h4 className="font-extrabold text-sm text-[var(--text-primary)]">Coin & Reward Orders</h4>
+                      <p className="text-[10.5px] text-[var(--text-muted)] mt-0.5">Detailed history of all transactions and store redemptions.</p>
                     </div>
 
                     <div className="flex flex-col gap-3 font-mono">
                       {coinHistory.length === 0 ? (
-                        <div className="text-center py-6 text-[var(--text-muted)] text-[10.5px] font-bold">
-                          No transactions logged yet. Complete missions to earn coins!
+                        <div className="text-center py-10 text-[var(--text-muted)] text-[10.5px] font-bold">
+                          No store order history found. Complete missions and redeem rewards!
                         </div>
                       ) : (
                         coinHistory.map(log => (
-                          <div key={log.id} className="flex justify-between items-center p-3 rounded-xl border border-[var(--border-color)]/60 bg-[var(--bg-secondary)]/20 hover:bg-[var(--bg-secondary)]/40 transition-all text-xs font-semibold">
+                          <div key={log.id} className="flex justify-between items-center p-3.5 rounded-xl border border-[var(--border-color)]/60 bg-[var(--bg-secondary)]/20 hover:bg-[var(--bg-secondary)]/40 transition-all text-xs font-semibold">
                             <div className="flex items-center gap-3 text-left">
                               <span className="text-[10px] text-[var(--text-muted)] font-bold">{log.time}</span>
                               <span className="text-[var(--text-primary)] font-bold">{log.title}</span>
@@ -3393,149 +4079,8 @@ int main() {
                       )}
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* Right Column (4 grid) */}
-                <div className="lg:col-span-4 flex flex-col gap-6">
-                  
-                  {/* 7. Level System */}
-                  <div className="p-5 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm">
-                    <h4 className="font-extrabold text-[10.5px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Level System</h4>
-                    <div className="flex items-center gap-3.5 py-1">
-                      <div className="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center text-xl select-none">
-                        🏆
-                      </div>
-                      <div className="text-left">
-                        <h5 className="font-black text-xs text-[var(--text-primary)]">Level {calculatedLevel} Explorer</h5>
-                        <p className="text-[10px] text-[var(--text-muted)] font-semibold mt-0.5">Next level benefits details</p>
-                      </div>
-                    </div>
-                    
-                    <div className="p-3 bg-[var(--bg-secondary)]/40 border border-[var(--border-color)] rounded-xl text-[10.5px] font-semibold text-[var(--text-secondary)] flex flex-col gap-2 text-left">
-                      <div className="flex justify-between font-bold">
-                        <span>Next Level</span>
-                        <span className="text-amber-500">{500 - currentProgressVal} Coins Needed</span>
-                      </div>
-                      <hr className="border-[var(--border-color)]/50 my-1" />
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-500 select-none">✔</span>
-                        <span>Bronze Profile Frame</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-500 select-none">✔</span>
-                        <span>Faster Support</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-500 select-none">✔</span>
-                        <span>New Badge</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 8. Streak Section */}
-                  <div className="p-5 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm text-left">
-                    <h4 className="font-extrabold text-[10.5px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Streak Section</h4>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-black text-rose-500 flex items-center gap-1.5">
-                        🔥 {rewardStreak} Day Streak
-                      </span>
-                      <span className="text-[10px] text-[var(--text-muted)] font-bold font-mono">Next Reward: 20 Days</span>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden">
-                        <div className="h-full bg-rose-500 rounded-full" style={{ width: '0%' }}></div>
-                      </div>
-                      <div className="flex justify-between text-[9px] text-[var(--text-muted)] font-bold font-mono">
-                        <span>Reward: +250 Coins</span>
-                        <span>0% Complete</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 6. Achievements */}
-                  <div className="p-5 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm text-left">
-                    <h4 className="font-extrabold text-[10.5px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Achievements</h4>
-
-                    <div className="flex flex-col gap-3">
-                      {[
-                        { title: 'First Assignment', desc: 'Completed', medal: '🥉', percent: 100 },
-                        { title: '10 Assignments', desc: 'Completed', medal: '🥈', percent: 100 },
-                        { title: '100 Assignments', desc: '60%', medal: '🥇', percent: 60 }
-                      ].map((item, idx) => (
-                        <div key={idx} className="flex flex-col gap-2 p-2.5 rounded-xl border border-[var(--border-color)]/60 bg-[var(--bg-secondary)]/15">
-                          <div className="flex justify-between items-center">
-                            <span className="flex items-center gap-2">
-                              <span className="text-base select-none">{item.medal}</span>
-                              <span className="text-[10.5px] font-bold text-[var(--text-primary)]">{item.title}</span>
-                            </span>
-                            <span className="text-[9.5px] text-[var(--text-muted)] font-mono font-bold">{item.desc}</span>
-                          </div>
-                          {item.percent < 100 && (
-                            <div className="h-1 w-full bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden mt-1">
-                              <div className="h-full bg-purple-500 rounded-full" style={{ width: `${item.percent}%` }}></div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 9. Leaderboard */}
-                  <div className="p-5 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm text-left">
-                    <div className="flex justify-between items-center">
-                      <h4 className="font-extrabold text-[10.5px] text-[var(--text-muted)] uppercase tracking-wider font-mono">Leaderboard</h4>
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-amber-500/25 bg-amber-500/5 text-amber-500 font-mono">500+ Club</span>
-                    </div>
-
-                    <div className="flex flex-col gap-2.5">
-                      {(() => {
-                        const leaderboardData = [];
-                        if (user) {
-                          leaderboardData.push({
-                            rank: 1,
-                            name: `${user.name} (You)`,
-                            coins: rewardCoins,
-                            rewards: dynamicRewards,
-                            avatar: "⭐",
-                            isUser: true
-                          });
-                        }
-
-                        if (leaderboardData.length === 0) {
-                          return (
-                            <div className="text-center py-4 text-[var(--text-muted)] text-[10px] font-bold">
-                              No contributors found
-                            </div>
-                          );
-                        }
-
-                        return leaderboardData.map((student, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl border bg-sky-500/5 border-sky-500/20 transition-all">
-                            <div className="flex items-center gap-2.5">
-                              <span className="text-xs font-mono font-black text-sky-500 w-4 text-center">#{student.rank}</span>
-                              <span className="text-sm select-none">{student.avatar}</span>
-                              <div className="text-left">
-                                <span className="text-[11px] font-bold block text-sky-500">{student.name}</span>
-                                <span className="text-[9px] text-[var(--text-muted)] font-semibold font-mono">{student.coins.toLocaleString()} Coins</span>
-                              </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-0.5">
-                              <span className="text-[10px] font-black text-amber-500 bg-amber-500/5 px-2 py-0.5 rounded-md font-mono border border-amber-500/10">
-                                🎁 {student.rewards} Card{student.rewards !== 1 ? 's' : ''}
-                              </span>
-                            </div>
-                          </div>
-                        ));
-                      })()}
-                    </div>
-                    
-                    <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl text-[10px] font-bold text-amber-600 dark:text-amber-500 text-center font-mono mt-1">
-                      Earn 500 Coins to get your next Reward Card!
-                    </div>
-                  </div>
-
-                </div>
               </div>
             </div>
           );
@@ -3553,8 +4098,8 @@ int main() {
                 <div className="p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col gap-4 shadow-sm">
                   <div className="flex flex-col items-center text-center gap-3">
                     {/* LeetCode style user avatar placeholder */}
-                    <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-900 border border-[var(--border-color)] flex items-center justify-center text-slate-400 shadow-inner">
-                      <User size={38} />
+                    <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-900 border border-[var(--border-color)] flex items-center justify-center text-3xl shadow-inner select-none">
+                      {user && user.avatar ? user.avatar : <User size={38} className="text-slate-400" />}
                     </div>
                     <div>
                       <h3 className="font-extrabold text-sm text-[var(--text-primary)] leading-tight">
@@ -3585,7 +4130,14 @@ int main() {
 
                   <button 
                     type="button"
-                    onClick={() => pushNotification("Feature Info", "Profile editing is currently locked.")}
+                    onClick={() => {
+                      if (user) {
+                        setEditName(user.name);
+                        setEditLocation(user.location || 'India');
+                        setEditAvatar(user.avatar || '⭐');
+                      }
+                      setIsEditingProfile(true);
+                    }}
                     className="w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-[10.5px] rounded-xl border border-emerald-500/15 transition-all cursor-pointer text-center font-heading"
                   >
                     Edit Profile
@@ -3594,7 +4146,7 @@ int main() {
                   <div className="flex flex-col gap-2.5 text-[11px] text-[var(--text-secondary)] font-medium pt-2 border-t border-[var(--border-color)]">
                     <div className="flex items-center gap-2">
                       <span>📍</span>
-                      <span>India</span>
+                      <span>{user && user.location ? user.location : 'India'}</span>
                     </div>
                     <div className="flex items-center gap-2 text-rose-500 hover:text-rose-600 cursor-pointer w-max" onClick={handleLogout}>
                       <span>🚪</span>
@@ -3655,7 +4207,7 @@ int main() {
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-5">
                   
                   {/* Solve Count Card */}
-                  <div className="sm:col-span-7 p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex items-center justify-between gap-6 shadow-sm">
+                  <div className="sm:col-span-7 p-6 rounded-3xl border border-[var(--border-color)] bg-white dark:bg-slate-950 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
                     
                     {/* SVG Circular Donut Chart */}
                     <div className="relative w-28 h-28 shrink-0 flex items-center justify-center">
@@ -4235,6 +4787,81 @@ int main() {
             >
               Register Account
             </button>
+          </form>
+        </div>
+      )}
+
+      {isEditingProfile && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in text-left">
+          <form onSubmit={handleSaveProfile} className="w-full max-w-sm bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl p-6 flex flex-col gap-4 shadow-2xl">
+            <div className="flex justify-between items-center pb-2 border-b border-[var(--border-color)]">
+              <h3 className="font-extrabold text-sm font-heading uppercase tracking-wider text-[var(--text-primary)]">Edit Profile</h3>
+              <button type="button" onClick={() => setIsEditingProfile(false)} className="p-1 rounded-full hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-pointer"><X size={14}/></button>
+            </div>
+            
+            {/* Name Input */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Display Name</label>
+              <input 
+                required 
+                type="text" 
+                placeholder="Your Name" 
+                value={editName} 
+                onChange={(e) => setEditName(e.target.value)} 
+                className="p-2.5 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-sky-500 font-semibold"
+              />
+            </div>
+
+            {/* Location Input */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Location</label>
+              <input 
+                required 
+                type="text" 
+                placeholder="e.g. Mumbai, India" 
+                value={editLocation} 
+                onChange={(e) => setEditLocation(e.target.value)} 
+                className="p-2.5 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-sky-500 font-semibold"
+              />
+            </div>
+
+            {/* Avatar Selector */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Select Avatar Badge</label>
+              <div className="grid grid-cols-5 gap-2">
+                {['⭐', '🦖', '🦊', '🦁', '🐼', '🐱', '🦉', '🦄', '🚀', '👑'].map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setEditAvatar(emoji)}
+                    className={`h-11 rounded-lg border flex items-center justify-center text-xl transition-all cursor-pointer ${
+                      editAvatar === emoji
+                        ? 'border-sky-500 bg-sky-500/10 scale-105 shadow-sm font-bold'
+                        : 'border-[var(--border-color)] hover:bg-[var(--bg-secondary)]'
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Save Buttons */}
+            <div className="flex gap-3 mt-2 select-none">
+              <button 
+                type="button"
+                onClick={() => setIsEditingProfile(false)}
+                className="w-1/2 py-2.5 border border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] font-bold text-xs rounded-lg cursor-pointer transition-all active:scale-95 text-center"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                className="w-1/2 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-lg shadow-md cursor-pointer transition-all active:scale-95 text-center"
+              >
+                Save Profile
+              </button>
+            </div>
           </form>
         </div>
       )}
