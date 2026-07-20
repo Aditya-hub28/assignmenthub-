@@ -12,32 +12,12 @@ import {
   ChevronRight, MessageSquare, AlertCircle, Eye, ShieldAlert,
   ChevronDown, ZoomIn, ZoomOut, Maximize2, Share2, Sparkles, Trophy,
   ThumbsUp, ExternalLink, HelpCircle, CheckSquare, Settings, Lock,
-  Flame, GraduationCap, CreditCard, User, ListChecks, Filter, ArrowUpDown,
-  Trash2, CalendarRange, PlusCircle
+  Flame, GraduationCap, CreditCard, User, ListChecks
 } from 'lucide-react';
-import { backend, supabase, isRealSupabase } from '../lib/supabase';
+import { dbMock } from '../lib/supabase';
 
 // Pure external helper functions to satisfy ESLint render purity
 const generateId = () => Date.now();
-
-const getCountdown = (dueDateStr, isCompleted, currentTime) => {
-  if (isCompleted) return 'Completed';
-  const diffMs = new Date(dueDateStr) - (currentTime || new Date());
-  if (diffMs <= 0) return 'Overdue';
-  
-  const diffSecs = Math.floor(diffMs / 1000);
-  const diffMins = Math.floor(diffSecs / 60);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-  
-  if (diffDays > 0) {
-    return `${diffDays}d ${diffHours % 24}h`;
-  }
-  if (diffHours > 0) {
-    return `${diffHours}h ${diffMins % 60}m`;
-  }
-  return `${diffMins}m ${diffSecs % 60}s`;
-};
 
 const pushNotificationHelper = (setNotifications, title, desc) => {
   const newNotif = {
@@ -66,23 +46,6 @@ const triggerConfettiHelper = (setParticles) => {
   setParticles(newParticles);
   setTimeout(() => setParticles([]), 2500);
 };
-
-const sortCalendarDeadlines = (items) =>
-  [...items].sort((a, b) => new Date(a.date) - new Date(b.date));
-
-const sortDashboardDeadlines = (items) =>
-  [...items].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-
-const toCalendarDeadline = (deadline) => ({
-  id: deadline.id,
-  title: deadline.name || deadline.title || 'Untitled Deadline',
-  subject: deadline.subject || '',
-  date: deadline.dueDate
-    ? new Date(deadline.dueDate).toISOString().split('T')[0]
-    : deadline.date || '',
-  status: deadline.status || 'Active',
-  orderId: deadline.orderId || ''
-});
 
 export default function Home() {
   // App General Database State
@@ -143,16 +106,7 @@ export default function Home() {
   }, [loyaltyCoins, hasSeenRewardModal]);
 
   // Navigation & View Routing
-  const [activeTab, setActiveTab] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const initialHash = window.location.hash.replace('#', '');
-      const validTabs = ['home', 'search', 'browse', 'upload', 'pricing', 'about', 'dashboard', 'admin', 'calendar', 'leaderboard', 'ai', 'rewards', 'profile'];
-      if (initialHash && validTabs.includes(initialHash)) {
-        return initialHash;
-      }
-    }
-    return 'home';
-  });
+  const [activeTab, setActiveTab] = useState('home'); // home, search, browse, upload, pricing, about, dashboard, admin, calendar, leaderboard, ai
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Sync activeTab state with browser URL Hash (history routing)
@@ -168,9 +122,13 @@ export default function Home() {
 
     if (typeof window !== 'undefined') {
       const initialHash = window.location.hash.replace('#', '');
-      if (!initialHash || !validTabs.includes(initialHash)) {
+      if (initialHash && validTabs.includes(initialHash)) {
+        setActiveTab(initialHash);
+      } else {
         window.location.hash = '#home';
+        setActiveTab('home');
       }
+
       window.addEventListener('hashchange', handleHashChange);
     }
 
@@ -278,11 +236,8 @@ export default function Home() {
   const [deadlineTitle, setDeadlineTitle] = useState('');
   const [deadlineSub, setDeadlineSub] = useState('');
   const [deadlineDate, setDeadlineDate] = useState('');
-  const [currentCalDate] = useState(() => new Date());
+  const [currentCalDate] = useState(new Date('2026-06-26')); // Simulation base date
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
-  const [deadlineSearchQuery, setDeadlineSearchQuery] = useState('');
-  const [deadlineFilter, setDeadlineFilter] = useState('all');
-  const [deadlineSort, setDeadlineSort] = useState('nearest');
 
   // AI Copilot Hub State
   const [aiActiveTab, setAiActiveTab] = useState('search');
@@ -320,81 +275,6 @@ export default function Home() {
   const [isCopied, setIsCopied] = useState(false);
   const chatEndRef = useRef(null);
 
-  const applyDashboardDeadlines = (nextDeadlines) => {
-    const sortedDeadlines = sortDashboardDeadlines(nextDeadlines || []);
-    setDashboardDeadlines(sortedDeadlines);
-    setDeadlines(sortCalendarDeadlines(sortedDeadlines.map(toCalendarDeadline)));
-    return sortedDeadlines;
-  };
-
-  // Live Supabase Auth Listener (for OAuth redirect / session restoration)
-  useEffect(() => {
-    if (isRealSupabase && supabase) {
-      // Restore session on mount
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session && session.user) {
-          backend.getProfile(session.user.id).then(profile => {
-            const userObj = profile || {
-              id: session.user.id,
-              name: session.user.user_metadata.name || session.user.email.split('@')[0].toUpperCase(),
-              email: session.user.email,
-              role: 'client',
-              avatar: session.user.user_metadata.avatar || '⭐',
-              location: 'India',
-              coins: 120,
-              level: 1,
-              orders: 0,
-              rating: 5.0,
-              streak: 1,
-              rank: 500,
-              completed: 0,
-              delivered: 0,
-              onTime: 100
-            };
-            setUser(userObj);
-            setRewardCoins(userObj.coins);
-            localStorage.setItem('tsec_user', JSON.stringify(userObj));
-          });
-        }
-      });
-
-      // Handle auth stage events
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session && session.user) {
-          const profile = await backend.getProfile(session.user.id);
-          const userObj = profile || {
-            id: session.user.id,
-            name: session.user.user_metadata.name || session.user.email.split('@')[0].toUpperCase(),
-            email: session.user.email,
-            role: 'client',
-            avatar: session.user.user_metadata.avatar || '⭐',
-            location: 'India',
-            coins: 120,
-            level: 1,
-            orders: 0,
-            rating: 5.0,
-            streak: 1,
-            rank: 500,
-            completed: 0,
-            delivered: 0,
-            onTime: 100
-          };
-          setUser(userObj);
-          setRewardCoins(userObj.coins);
-          localStorage.setItem('tsec_user', JSON.stringify(userObj));
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setRewardCoins(0);
-          localStorage.removeItem('tsec_user');
-        }
-      });
-
-      return () => {
-        subscription.unsubscribe();
-      };
-    }
-  }, []);
-
   // 1. Initial Load & Persistence
   useEffect(() => {
     async function loadData() {
@@ -409,12 +289,14 @@ export default function Home() {
           return;
         }
 
-        const resources = await backend.getResources();
-        const pending = await backend.getPending();
-        const rankers = await backend.getContributors();
+        const resources = await dbMock.getResources();
+        const pending = await dbMock.getPending();
+        const dates = await dbMock.getDeadlines();
+        const rankers = await dbMock.getContributors();
 
         setDb(resources);
         setPendingUploads(pending);
+        setDeadlines(dates);
         setContributors(rankers);
 
         if (typeof window !== 'undefined') {
@@ -426,182 +308,165 @@ export default function Home() {
           if (localBook) setBookmarks(JSON.parse(localBook));
           if (localDown) setDownloads(JSON.parse(localDown));
 
-          if (localUser) {
-            const parsed = JSON.parse(localUser);
-            // Load user's real/mock active orders and deadlines
-            const userDeadlines = await backend.getDeadlines(parsed.id || parsed.email);
-            applyDashboardDeadlines(userDeadlines);
-            const userOrders = await backend.getOrders(parsed.id || parsed.email);
-            setDashboardActiveOrders(userOrders);
-          } else {
-            // Load default/unauthenticated active orders and deadlines
-            const defaultDeadlines = await backend.getDeadlines('anonymous');
-            applyDashboardDeadlines(defaultDeadlines);
-            const defaultOrders = await backend.getOrders('anonymous');
-            setDashboardActiveOrders(defaultOrders);
-          }
+          const localOrders = localStorage.getItem('tsec_active_orders');
+          const localDeadlines = localStorage.getItem('tsec_deadlines');
+          if (localOrders) setDashboardActiveOrders(JSON.parse(localOrders));
+          if (localDeadlines) setDashboardDeadlines(JSON.parse(localDeadlines));
 
           if (localUser) {
             const parsed = JSON.parse(localUser);
+            if (parsed.name.toLowerCase() === 'anjali mishra' && (parsed.orders !== 0 || parsed.coins !== 0 || parsed.rank !== 0 || parsed.completed !== 0)) {
+              parsed.coins = 0;
+              parsed.level = 1;
+              parsed.orders = 0;
+              parsed.streak = 0;
+              parsed.rank = 0;
+              parsed.completed = 0;
+              parsed.delivered = 0;
+              localStorage.setItem('tsec_user', JSON.stringify(parsed));
+            }
+            // Developer Reward: Credit 1000 HubCoins immediately
+            if (!localStorage.getItem('tsec_dev_credit_1000')) {
+              parsed.coins = (parsed.coins || 0) + 1000;
+              localStorage.setItem('tsec_user', JSON.stringify(parsed));
+              localStorage.setItem('tsec_dev_credit_1000', 'true');
+              setRewardCoins(parsed.coins);
+              
+              setCoinHistory(prev => [
+                { id: Date.now(), type: 'earn', title: 'Developer Reward Credit', amount: 1000, time: 'Today' },
+                ...prev
+              ]);
+              
+              setTimeout(() => {
+                pushNotificationHelper(setNotifications, "Developer Reward! 🪙", "You have been credited +1000 HubCoins!");
+                triggerConfettiHelper(setParticles);
+              }, 2000);
+            } else {
+              setRewardCoins(parsed.coins || 0);
+            }
+
+            // Developer Reward Boost: Credit 10000 HubCoins immediately
+            if (!localStorage.getItem('tsec_dev_credit_10000')) {
+              parsed.coins = (parsed.coins || 0) + 10000;
+              localStorage.setItem('tsec_user', JSON.stringify(parsed));
+              localStorage.setItem('tsec_dev_credit_10000', 'true');
+              setRewardCoins(parsed.coins);
+              
+              setCoinHistory(prev => [
+                { id: Date.now() + 2, type: 'earn', title: 'Developer Boost Credit', amount: 10000, time: 'Today' },
+                ...prev
+              ]);
+              
+              setTimeout(() => {
+                pushNotificationHelper(setNotifications, "Developer Boost! 🪙", "You have been credited +10000 HubCoins!");
+                triggerConfettiHelper(setParticles);
+              }, 2500);
+            }
             setUser(parsed);
             setEditName(parsed.name || '');
             setEditLocation(parsed.location || 'India');
             setEditAvatar(parsed.avatar || '⭐');
-            setRewardCoins(parsed.coins || 0);
 
-            if (!isRealSupabase) {
-              if (parsed.name.toLowerCase() === 'anjali mishra' && (parsed.orders !== 0 || parsed.coins !== 0 || parsed.rank !== 0 || parsed.completed !== 0)) {
-                parsed.coins = 0;
-                parsed.level = 1;
-                parsed.orders = 0;
-                parsed.streak = 0;
-                parsed.rank = 0;
-                parsed.completed = 0;
-                parsed.delivered = 0;
-                localStorage.setItem('tsec_user', JSON.stringify(parsed));
-              }
-              if (!localStorage.getItem('tsec_dev_credit_1000')) {
-                parsed.coins = (parsed.coins || 0) + 1000;
-                localStorage.setItem('tsec_user', JSON.stringify(parsed));
-                localStorage.setItem('tsec_dev_credit_1000', 'true');
-                setRewardCoins(parsed.coins);
-                
-                setCoinHistory(prev => [
-                  { id: Date.now(), type: 'earn', title: 'Developer Reward Credit', amount: 1000, time: 'Today' },
-                  ...prev
-                ]);
-                
-                setTimeout(() => {
-                  pushNotificationHelper(setNotifications, "Developer Reward! 🪙", "You have been credited +1000 HubCoins!");
-                  triggerConfettiHelper(setParticles);
-                }, 2000);
-              }
-
-              if (!localStorage.getItem('tsec_dev_credit_10000')) {
-                parsed.coins = (parsed.coins || 0) + 10000;
-                localStorage.setItem('tsec_user', JSON.stringify(parsed));
-                localStorage.setItem('tsec_dev_credit_10000', 'true');
-                setRewardCoins(parsed.coins);
-                
-                setCoinHistory(prev => [
-                  { id: Date.now() + 2, type: 'earn', title: 'Developer Boost Credit', amount: 10000, time: 'Today' },
-                  ...prev
-                ]);
-                
-                setTimeout(() => {
-                  pushNotificationHelper(setNotifications, "Developer Boost! 🪙", "You have been credited +10000 HubCoins!");
-                  triggerConfettiHelper(setParticles);
-                }, 2500);
-              }
-
-              const today = new Date().toISOString().split('T')[0];
-              const lastLoginDate = localStorage.getItem(`tsec_last_login_${parsed.email}`);
-              if (lastLoginDate !== today) {
-                setMissionLogin(true);
-                const bonusAmount = 10;
-                parsed.coins = (parsed.coins || 0) + bonusAmount;
-                localStorage.setItem('tsec_user', JSON.stringify(parsed));
-                localStorage.setItem(`tsec_last_login_${parsed.email}`, today);
-                setRewardCoins(parsed.coins);
-                
-                setCoinHistory(prev => [
-                  { id: Date.now(), type: 'earn', title: 'Daily Login Bonus', amount: bonusAmount, time: 'Today' },
-                  ...prev
-                ]);
-                
-                setTimeout(() => {
-                  pushNotificationHelper(setNotifications, "Daily Login Bonus! 🪙", "You logged in today and automatically earned +10 Coins!");
-                  triggerConfettiHelper(setParticles);
-                }, 1500);
-              } else {
-                setMissionLogin(true);
-              }
+            // Check Daily Login Bonus
+            const today = new Date().toISOString().split('T')[0];
+            const lastLoginDate = localStorage.getItem(`tsec_last_login_${parsed.email}`);
+            if (lastLoginDate !== today) {
+              setMissionLogin(true);
+              const bonusAmount = 10;
+              parsed.coins = (parsed.coins || 0) + bonusAmount;
+              localStorage.setItem('tsec_user', JSON.stringify(parsed));
+              localStorage.setItem(`tsec_last_login_${parsed.email}`, today);
+              setRewardCoins(parsed.coins);
+              
+              setCoinHistory(prev => [
+                { id: Date.now(), type: 'earn', title: 'Daily Login Bonus', amount: bonusAmount, time: 'Today' },
+                ...prev
+              ]);
+              
+              setTimeout(() => {
+                pushNotificationHelper(setNotifications, "Daily Login Bonus! 🪙", "You logged in today and automatically earned +10 Coins!");
+                triggerConfettiHelper(setParticles);
+              }, 1500);
             } else {
-              setMissionLogin(false);
+              setMissionLogin(true);
             }
           } else {
-            if (!isRealSupabase) {
-              const defaultUser = {
-                name: 'Anjali Mishra',
-                email: 'anjali@gmail.com',
-                role: 'writer',
-                coins: 0,
-                level: 1,
-                orders: 0,
-                rating: 5.0,
-                streak: 0,
-                rank: 0,
-                followers: 0,
-                following: 0,
-                completed: 0,
-                delivered: 0,
-                onTime: 100
-              };
-              if (!localStorage.getItem('tsec_dev_credit_1000')) {
-                defaultUser.coins = (defaultUser.coins || 0) + 1000;
-                localStorage.setItem('tsec_dev_credit_1000', 'true');
-                
-                setCoinHistory(prev => [
-                  { id: Date.now() + 1, type: 'earn', title: 'Developer Reward Credit', amount: 1000, time: 'Today' },
-                  ...prev
-                ]);
-                
-                setTimeout(() => {
-                  pushNotificationHelper(setNotifications, "Developer Reward! 🪙", "You have been credited +1000 HubCoins!");
-                  triggerConfettiHelper(setParticles);
-                }, 2000);
-              }
+            const defaultUser = {
+              name: 'Anjali Mishra',
+              email: 'anjali@gmail.com',
+              role: 'writer',
+              coins: 0,
+              level: 1,
+              orders: 0,
+              rating: 5.0,
+              streak: 0,
+              rank: 0,
+              followers: 0,
+              following: 0,
+              completed: 0,
+              delivered: 0,
+              onTime: 100
+            };
+            // Developer Reward for default user
+            if (!localStorage.getItem('tsec_dev_credit_1000')) {
+              defaultUser.coins = (defaultUser.coins || 0) + 1000;
+              localStorage.setItem('tsec_dev_credit_1000', 'true');
+              
+              setCoinHistory(prev => [
+                { id: Date.now() + 1, type: 'earn', title: 'Developer Reward Credit', amount: 1000, time: 'Today' },
+                ...prev
+              ]);
+              
+              setTimeout(() => {
+                pushNotificationHelper(setNotifications, "Developer Reward! 🪙", "You have been credited +1000 HubCoins!");
+                triggerConfettiHelper(setParticles);
+              }, 2000);
+            }
 
-              if (!localStorage.getItem('tsec_dev_credit_10000')) {
-                defaultUser.coins = (defaultUser.coins || 0) + 10000;
-                localStorage.setItem('tsec_dev_credit_10000', 'true');
-                
-                setCoinHistory(prev => [
-                  { id: Date.now() + 3, type: 'earn', title: 'Developer Boost Credit', amount: 10000, time: 'Today' },
-                  ...prev
-                ]);
-                
-                setTimeout(() => {
-                  pushNotificationHelper(setNotifications, "Developer Boost! 🪙", "You have been credited +10000 HubCoins!");
-                  triggerConfettiHelper(setParticles);
-                }, 2500);
-              }
-              setUser(defaultUser);
-              setEditName(defaultUser.name || '');
-              setEditLocation(defaultUser.location || 'India');
-              setEditAvatar(defaultUser.avatar || '⭐');
+            // Developer Reward Boost for default user
+            if (!localStorage.getItem('tsec_dev_credit_10000')) {
+              defaultUser.coins = (defaultUser.coins || 0) + 10000;
+              localStorage.setItem('tsec_dev_credit_10000', 'true');
+              
+              setCoinHistory(prev => [
+                { id: Date.now() + 3, type: 'earn', title: 'Developer Boost Credit', amount: 10000, time: 'Today' },
+                ...prev
+              ]);
+              
+              setTimeout(() => {
+                pushNotificationHelper(setNotifications, "Developer Boost! 🪙", "You have been credited +10000 HubCoins!");
+                triggerConfettiHelper(setParticles);
+              }, 2500);
+            }
+            setUser(defaultUser);
+            setEditName(defaultUser.name || '');
+            setEditLocation(defaultUser.location || 'India');
+            setEditAvatar(defaultUser.avatar || '⭐');
+            localStorage.setItem('tsec_user', JSON.stringify(defaultUser));
+            setRewardCoins(defaultUser.coins);
+
+            // Check Daily Login Bonus for default user
+            const today = new Date().toISOString().split('T')[0];
+            const lastLoginDate = localStorage.getItem(`tsec_last_login_${defaultUser.email}`);
+            if (lastLoginDate !== today) {
+              setMissionLogin(true);
+              const bonusAmount = 10;
+              defaultUser.coins = (defaultUser.coins || 0) + bonusAmount;
               localStorage.setItem('tsec_user', JSON.stringify(defaultUser));
+              localStorage.setItem(`tsec_last_login_${defaultUser.email}`, today);
               setRewardCoins(defaultUser.coins);
-
-              const today = new Date().toISOString().split('T')[0];
-              const lastLoginDate = localStorage.getItem(`tsec_last_login_${defaultUser.email}`);
-              if (lastLoginDate !== today) {
-                setMissionLogin(true);
-                const bonusAmount = 10;
-                defaultUser.coins = (defaultUser.coins || 0) + bonusAmount;
-                localStorage.setItem('tsec_user', JSON.stringify(defaultUser));
-                localStorage.setItem(`tsec_last_login_${defaultUser.email}`, today);
-                setRewardCoins(defaultUser.coins);
-                
-                setCoinHistory(prev => [
-                  { id: Date.now(), type: 'earn', title: 'Daily Login Bonus', amount: bonusAmount, time: 'Today' },
-                  ...prev
-                ]);
-                
-                setTimeout(() => {
-                  pushNotificationHelper(setNotifications, "Daily Login Bonus! 🪙", "You logged in today and automatically earned +10 Coins!");
-                  triggerConfettiHelper(setParticles);
-                }, 1500);
-              } else {
-                setMissionLogin(true);
-              }
+              
+              setCoinHistory(prev => [
+                { id: Date.now(), type: 'earn', title: 'Daily Login Bonus', amount: bonusAmount, time: 'Today' },
+                ...prev
+              ]);
+              
+              setTimeout(() => {
+                pushNotificationHelper(setNotifications, "Daily Login Bonus! 🪙", "You logged in today and automatically earned +10 Coins!");
+                triggerConfettiHelper(setParticles);
+              }, 1500);
             } else {
-              setUser(null);
-              setRewardCoins(0);
-              setMissionLogin(false);
-              setEditName('');
-              setEditLocation('India');
-              setEditAvatar('⭐');
+              setMissionLogin(true);
             }
           }
           
@@ -654,93 +519,44 @@ export default function Home() {
   };
 
   // Auth Operations
-  const handleLogin = async (e) => {
+  const handleLogin = (e) => {
     e.preventDefault();
     if (!loginEmail || !loginPass) return;
-    
-    try {
-      const { user: loggedInUser } = await backend.signIn(loginEmail, loginPass);
-      setUser(loggedInUser);
-      setRewardCoins(loggedInUser.coins || 120);
-      localStorage.setItem('tsec_user', JSON.stringify(loggedInUser));
+    const isWriter = loginEmail.includes('writer') || loginEmail === 'anjali@gmail.com';
+    const name = loginEmail.split('@')[0];
+    const role = isWriter ? 'writer' : 'client';
+    const newUser = {
+      name: isWriter ? 'Anjali Mishra' : (name.toLowerCase() === 'rahul' ? 'Rahul Sharma' : name.toUpperCase()),
+      email: loginEmail,
+      role: role,
+      coins: isWriter ? 2450 : 120,
+      level: isWriter ? 18 : 3,
+      orders: isWriter ? 56 : 5,
+      rating: isWriter ? 4.9 : 4.5,
+      streak: isWriter ? 15 : 4,
+      rank: isWriter ? 18 : 142,
+      completed: isWriter ? 124 : 8,
+      delivered: isWriter ? 98 : 0,
+      onTime: isWriter ? 97 : 100
+    };
+    setUser(newUser);
+    setRewardCoins(newUser.coins);
+    localStorage.setItem('tsec_user', JSON.stringify(newUser));
+    setLoginEmail('');
+    setLoginPass('');
+    setLoginModalOpen(false);
+    pushNotification("Login Successful", `Welcome back, ${newUser.name}!`);
 
-      // Reload data for the user
-      const userDeadlines = await backend.getDeadlines(loggedInUser.id || loggedInUser.email);
-      applyDashboardDeadlines(userDeadlines);
-      const userOrders = await backend.getOrders(loggedInUser.id || loggedInUser.email);
-      setDashboardActiveOrders(userOrders);
-
-      setLoginEmail('');
-      setLoginPass('');
-      setLoginModalOpen(false);
-      pushNotification("Login Successful", `Welcome back, ${loggedInUser.name}!`);
-
-      // Check Daily Login Bonus on login
-      const today = new Date().toISOString().split('T')[0];
-      const lastLoginDate = localStorage.getItem(`tsec_last_login_${loggedInUser.email}`);
-      if (lastLoginDate !== today) {
-        setMissionLogin(true);
-        const bonusAmount = 10;
-        const updatedUser = {
-          ...loggedInUser,
-          coins: (loggedInUser.coins || 0) + bonusAmount
-        };
-        setUser(updatedUser);
-        localStorage.setItem('tsec_user', JSON.stringify(updatedUser));
-        localStorage.setItem(`tsec_last_login_${loggedInUser.email}`, today);
-        setRewardCoins(updatedUser.coins);
-        
-        setCoinHistory(prev => [
-          { id: Date.now(), type: 'earn', title: 'Daily Login Bonus', amount: bonusAmount, time: 'Today' },
-          ...prev
-        ]);
-        
-        setTimeout(() => {
-          pushNotification("Daily Login Bonus! 🪙", "You logged in today and automatically earned +10 Coins!");
-          triggerConfettiHelper(setParticles);
-        }, 1000);
-      } else {
-        setMissionLogin(true);
-      }
-    } catch (err) {
-      console.error(err);
-      pushNotification("Login Failed", err.message || "Invalid credentials.");
-    }
-  };
-
-  const handleSignup = async (e) => {
-    e.preventDefault();
-    if (!signupName || !signupEmail || !signupPass) return;
-    
-    try {
-      const { user: registeredUser } = await backend.signUp(signupEmail, signupPass, signupName);
-      setUser(registeredUser);
-      setRewardCoins(registeredUser.coins || 120);
-      localStorage.setItem('tsec_user', JSON.stringify(registeredUser));
-
-      const userDeadlines = await backend.getDeadlines(registeredUser.id || registeredUser.email);
-      applyDashboardDeadlines(userDeadlines);
-      const userOrders = await backend.getOrders(registeredUser.id || registeredUser.email);
-      setDashboardActiveOrders(userOrders);
-
-      setSignupName('');
-      setSignupEmail('');
-      setSignupPass('');
-      setSignupModalOpen(false);
-      pushNotification("Sign Up Successful", `Welcome to TSEC Hub, ${signupName}!`);
-
-      // Check Daily Login Bonus on signup
-      const today = new Date().toISOString().split('T')[0];
+    // Check Daily Login Bonus on login
+    const today = new Date().toISOString().split('T')[0];
+    const lastLoginDate = localStorage.getItem(`tsec_last_login_${newUser.email}`);
+    if (lastLoginDate !== today) {
       setMissionLogin(true);
       const bonusAmount = 10;
-      const updatedUser = {
-        ...registeredUser,
-        coins: (registeredUser.coins || 0) + bonusAmount
-      };
-      setUser(updatedUser);
-      localStorage.setItem('tsec_user', JSON.stringify(updatedUser));
-      localStorage.setItem(`tsec_last_login_${registeredUser.email}`, today);
-      setRewardCoins(updatedUser.coins);
+      newUser.coins = (newUser.coins || 0) + bonusAmount;
+      localStorage.setItem('tsec_user', JSON.stringify(newUser));
+      localStorage.setItem(`tsec_last_login_${newUser.email}`, today);
+      setRewardCoins(newUser.coins);
       
       setCoinHistory(prev => [
         { id: Date.now(), type: 'earn', title: 'Daily Login Bonus', amount: bonusAmount, time: 'Today' },
@@ -748,21 +564,63 @@ export default function Home() {
       ]);
       
       setTimeout(() => {
-        pushNotification("Daily Login Bonus! 🪙", "Welcome! You earned +10 Coins for your first login today!");
+        pushNotification("Daily Login Bonus! 🪙", "You logged in today and automatically earned +10 Coins!");
         triggerConfettiHelper(setParticles);
       }, 1000);
-    } catch (err) {
-      console.error(err);
-      pushNotification("Sign Up Failed", err.message || "Registration failed.");
+    } else {
+      setMissionLogin(true);
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await backend.signOut();
-    } catch (err) {
-      console.error(err);
-    }
+  const handleSignup = (e) => {
+    e.preventDefault();
+    if (!signupName || !signupEmail) return;
+    const isWriter = signupEmail.includes('writer') || signupEmail === 'anjali@gmail.com';
+    const role = isWriter ? 'writer' : 'client';
+    const newUser = {
+      name: signupName.toUpperCase(),
+      email: signupEmail,
+      role: role,
+      coins: role === 'writer' ? 2450 : 120,
+      level: role === 'writer' ? 18 : 1,
+      orders: role === 'writer' ? 56 : 0,
+      rating: role === 'writer' ? 4.9 : 5.0,
+      streak: role === 'writer' ? 15 : 1,
+      rank: role === 'writer' ? 18 : 500,
+      completed: role === 'writer' ? 124 : 0,
+      delivered: role === 'writer' ? 98 : 0,
+      onTime: role === 'writer' ? 97 : 100
+    };
+    setUser(newUser);
+    setRewardCoins(newUser.coins);
+    localStorage.setItem('tsec_user', JSON.stringify(newUser));
+    setSignupName('');
+    setSignupEmail('');
+    setSignupPass('');
+    setSignupModalOpen(false);
+    pushNotification("Sign Up Successful", `Welcome to TSEC Hub, ${signupName}!`);
+
+    // Check Daily Login Bonus on signup
+    const today = new Date().toISOString().split('T')[0];
+    setMissionLogin(true);
+    const bonusAmount = 10;
+    newUser.coins = (newUser.coins || 0) + bonusAmount;
+    localStorage.setItem('tsec_user', JSON.stringify(newUser));
+    localStorage.setItem(`tsec_last_login_${newUser.email}`, today);
+    setRewardCoins(newUser.coins);
+    
+    setCoinHistory(prev => [
+      { id: Date.now(), type: 'earn', title: 'Daily Login Bonus', amount: bonusAmount, time: 'Today' },
+      ...prev
+    ]);
+    
+    setTimeout(() => {
+      pushNotification("Daily Login Bonus! 🪙", "Welcome! You earned +10 Coins for your first login today!");
+      triggerConfettiHelper(setParticles);
+    }, 1000);
+  };
+
+  const handleLogout = () => {
     setUser(null);
     setRewardCoins(0);
     setMissionLogin(false);
@@ -771,103 +629,25 @@ export default function Home() {
     pushNotification("Logged Out", "You have successfully signed out.");
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const { user: googleUser } = await backend.signInWithGoogle();
-      if (googleUser) {
-        setUser(googleUser);
-        setRewardCoins(googleUser.coins || 120);
-        localStorage.setItem('tsec_user', JSON.stringify(googleUser));
-        pushNotification("Login Successful", `Welcome back, ${googleUser.name}!`);
-        setLoginModalOpen(false);
-        setSignupModalOpen(false);
-      }
-    } catch (err) {
-      console.error(err);
-      pushNotification("Google Sign-In Failed", err.message || "Failed to authenticate.");
-    }
-  };
-
-  const handleSaveProfile = async (e) => {
+  const handleSaveProfile = (e) => {
     e.preventDefault();
     if (!editName.trim()) {
       pushNotification("Error", "Name cannot be empty.");
       return;
     }
-
-    const currentUser = user;
-    if (!currentUser) return;
-
-    const updatedUser = {
-      ...currentUser,
-      name: editName.trim(),
-      location: editLocation.trim(),
-      avatar: editAvatar
-    };
-
-    try {
-      if (currentUser.id) {
-        const savedProfile = await backend.updateProfile(currentUser.id, {
-          name: updatedUser.name,
-          location: updatedUser.location,
-          avatar: updatedUser.avatar
-        });
-        if (savedProfile) {
-          Object.assign(updatedUser, savedProfile);
-        }
-      }
-
-      setUser(updatedUser);
+    setUser(prev => {
+      if (!prev) return null;
+      const updatedUser = {
+        ...prev,
+        name: editName.trim(),
+        location: editLocation.trim(),
+        avatar: editAvatar
+      };
       localStorage.setItem('tsec_user', JSON.stringify(updatedUser));
-      setIsEditingProfile(false);
-      pushNotification("Profile Updated", "Your profile details have been saved successfully!");
-    } catch (err) {
-      console.error(err);
-      pushNotification("Profile Update Failed", err.message || "Unable to save profile changes.");
-    }
-  };
-
-  const handleToggleDeadlineStatus = async (deadlineId) => {
-    const existingDeadline = dashboardDeadlines.find(deadline => deadline.id === deadlineId);
-    if (!existingDeadline) return;
-
-    const nextStatus = existingDeadline.status === 'Completed' ? 'Active' : 'Completed';
-    const updatedDeadlines = sortDashboardDeadlines(
-      dashboardDeadlines.map(deadline =>
-        deadline.id === deadlineId ? { ...deadline, status: nextStatus } : deadline
-      )
-    );
-
-    applyDashboardDeadlines(updatedDeadlines);
-
-    try {
-      await backend.toggleDeadlineStatus(deadlineId, nextStatus);
-      pushNotification(
-        nextStatus === 'Completed' ? "Deadline Completed" : "Deadline Reopened",
-        `'${existingDeadline.name}' marked as ${nextStatus.toLowerCase()}.`
-      );
-    } catch (err) {
-      console.error(err);
-      applyDashboardDeadlines(dashboardDeadlines);
-      pushNotification("Deadline Update Failed", err.message || "Unable to update deadline status.");
-    }
-  };
-
-  const handleDeletePersonalDeadline = async (deadlineId) => {
-    const existingDeadline = dashboardDeadlines.find(deadline => deadline.id === deadlineId);
-    if (!existingDeadline) return;
-
-    const updatedDeadlines = dashboardDeadlines.filter(deadline => deadline.id !== deadlineId);
-    applyDashboardDeadlines(updatedDeadlines);
-
-    try {
-      await backend.deleteDeadline(deadlineId);
-      pushNotification("Personal Deadline Deleted", `'${existingDeadline.name}' was removed from your tracker.`);
-    } catch (err) {
-      console.error(err);
-      applyDashboardDeadlines(dashboardDeadlines);
-      pushNotification("Delete Failed", err.message || "Unable to delete this deadline.");
-    }
+      return updatedUser;
+    });
+    setIsEditingProfile(false);
+    pushNotification("Profile Updated", "Your profile details have been saved successfully!");
   };
 
   // Bookmark Toggle
@@ -884,7 +664,7 @@ export default function Home() {
   };
 
   // Download Increment
-  const handleDownload = async (id) => {
+  const handleDownload = (id) => {
     const item = db.find(r => r.id === id);
     if (!item) return;
 
@@ -893,26 +673,15 @@ export default function Home() {
     setDownloads(nextDown);
     localStorage.setItem('tsec_downloads', JSON.stringify(nextDown));
 
-    const updatedDb = [...db];
-    setDb(updatedDb);
-
-    try {
-      await backend.saveResources(updatedDb);
-      pushNotification("Download Started", `'${item.title}' is downloading to your system.`);
-    } catch (err) {
-      console.error(err);
-      pushNotification("Download Sync Failed", err.message || "Download started, but analytics were not saved.");
-    }
+    setDb([...db]);
+    dbMock.saveResources(db);
+    pushNotification("Download Started", `'${item.title}' is downloading to your system.`);
   };
 
   // Doubts Q&A Posting
-  const handleAddComment = async (e) => {
+  const handleAddComment = (e) => {
     e.preventDefault();
     if (!commentText || !activeDetail) return;
-    if (isRealSupabase && (!user || !user.id)) {
-      pushNotification("Login Required", "Please sign in before posting a doubt.");
-      return;
-    }
 
     const newComment = {
       author: user ? user.name : "Anonymous Student",
@@ -920,28 +689,26 @@ export default function Home() {
       date: new Date().toISOString().split('T')[0]
     };
 
-    try {
-      const updatedItem = await backend.addComment(activeDetail.id, newComment);
-      const updatedDb = db.map(item => (item.id === activeDetail.id ? updatedItem : item));
+    const updatedDb = db.map(item => {
+      if (item.id === activeDetail.id) {
+        const nextComments = [...(item.comments || []), newComment];
+        const updatedItem = { ...item, comments: nextComments };
+        setActiveDetail(updatedItem);
+        return updatedItem;
+      }
+      return item;
+    });
 
-      setDb(updatedDb);
-      setActiveDetail(updatedItem);
-      setCommentText('');
-      pushNotification("Comment Posted", "Your doubt has been posted.");
-    } catch (err) {
-      console.error(err);
-      pushNotification("Comment Failed", err.message || "Unable to post your doubt right now.");
-    }
+    setDb(updatedDb);
+    dbMock.saveResources(updatedDb);
+    setCommentText('');
+    pushNotification("Comment Posted", "Your doubt has been posted.");
   };
 
   // Star Rating Posting
-  const handleAddReview = async (e) => {
+  const handleAddReview = (e) => {
     e.preventDefault();
     if (!reviewContent || !activeDetail) return;
-    if (isRealSupabase && (!user || !user.id)) {
-      pushNotification("Login Required", "Please sign in before submitting a review.");
-      return;
-    }
 
     const newReview = {
       author: user ? user.name : "Student Contributor",
@@ -950,29 +717,30 @@ export default function Home() {
       tags: reviewTags
     };
 
-    try {
-      const updatedItem = await backend.addReview(activeDetail.id, newReview);
-      const updatedDb = db.map(item => (item.id === activeDetail.id ? updatedItem : item));
+    const updatedDb = db.map(item => {
+      if (item.id === activeDetail.id) {
+        const nextReviews = [newReview, ...(item.reviews || [])];
+        const totalStars = nextReviews.reduce((sum, r) => sum + r.stars, 0);
+        const rating = parseFloat((totalStars / nextReviews.length).toFixed(1));
+        const updatedItem = { ...item, reviews: nextReviews, rating };
+        setActiveDetail(updatedItem);
+        return updatedItem;
+      }
+      return item;
+    });
 
-      setDb(updatedDb);
-      setActiveDetail(updatedItem);
-      setReviewContent('');
-      setReviewStars(5);
-      setReviewTags([]);
-      pushNotification("Review Submitted", "Thank you for rating this resource!");
-    } catch (err) {
-      console.error(err);
-      pushNotification("Review Failed", err.message || "Unable to submit your rating right now.");
-    }
+    setDb(updatedDb);
+    dbMock.saveResources(updatedDb);
+    
+    setReviewContent('');
+    setReviewStars(5);
+    setReviewTags([]);
+    pushNotification("Review Submitted", "Thank you for rating this resource!");
   };
 
   // Upload Assignment Handler
-  const handleUploadAssignment = async (e) => {
+  const handleUploadAssignment = (e) => {
     e.preventDefault();
-    if (isRealSupabase && (!user || !user.id)) {
-      pushNotification("Login Required", "Please sign in before uploading a document.");
-      return;
-    }
     const title = e.target.title.value;
     const subject = e.target.subject.value;
     const sem = parseInt(e.target.sem.value);
@@ -988,29 +756,23 @@ export default function Home() {
       dept,
       type,
       desc,
-      userId: user?.id || user?.email || 'anonymous',
       uploadedBy: user ? user.name : "Guest Contributor",
       date: new Date().toISOString().split('T')[0],
       size: "1.2 MB",
-      status: 'Pending',
       tags: [subject.replace(/\s+/g, ''), type]
     };
 
-    try {
-      const nextPending = [newUpload, ...pendingUploads];
-      await backend.savePending(nextPending);
-      setPendingUploads(nextPending);
-      e.target.reset();
-      setActiveTab('dashboard');
-      pushNotification("Upload Pending", "Your document is pending admin approval.");
-    } catch (err) {
-      console.error(err);
-      pushNotification("Upload Failed", err.message || "Unable to submit this document right now.");
-    }
+    const nextPending = [newUpload, ...pendingUploads];
+    setPendingUploads(nextPending);
+    dbMock.savePending(nextPending);
+
+    e.target.reset();
+    setActiveTab('dashboard');
+    pushNotification("Upload Pending", "Your document is pending admin approval.");
   };
 
   // Admin Queue Actions
-  const approvePending = async (id) => {
+  const approvePending = (id) => {
     const item = pendingUploads.find(p => p.id === id);
     if (!item) return;
 
@@ -1024,8 +786,12 @@ export default function Home() {
     };
 
     const nextDb = [...db, approvedItem];
+    setDb(nextDb);
+    dbMock.saveResources(nextDb);
 
     const nextPending = pendingUploads.filter(p => p.id !== id);
+    setPendingUploads(nextPending);
+    dbMock.savePending(nextPending);
 
     // Update real-time contributors standings
     const contributorName = item.uploadedBy || "Guest Contributor";
@@ -1056,50 +822,34 @@ export default function Home() {
       rank: index + 1
     }));
 
-    try {
-      await Promise.all([
-        backend.saveResources(nextDb),
-        backend.savePending(nextPending),
-        backend.saveContributors(updatedContributors)
-      ]);
+    setContributors(updatedContributors);
+    dbMock.saveContributors(updatedContributors);
 
-      setDb(nextDb);
-      setPendingUploads(nextPending);
-      setContributors(updatedContributors);
-
-      if (user && user.name.toLowerCase() === contributorName.toLowerCase()) {
-        const userRankInList = updatedContributors.find(c => c.name.toLowerCase() === user.name.toLowerCase())?.rank || user.rank;
-        const updatedUser = {
-          ...user,
-          coins: (user.coins !== undefined ? user.coins : 0) + 50,
-          rank: userRankInList,
-          completed: (user.completed || 0) + 1
-        };
-        setUser(updatedUser);
-        localStorage.setItem('tsec_user', JSON.stringify(updatedUser));
-      }
-
-      setContributionPoints(prev => prev + 25);
-      pushNotification("Upload Approved", `'${item.title}' is now public!`);
-    } catch (err) {
-      console.error(err);
-      pushNotification("Approval Failed", err.message || "Unable to publish this resource right now.");
+    // Sync logged-in user profile stats if they are the uploader
+    if (user && user.name.toLowerCase() === contributorName.toLowerCase()) {
+      const userRankInList = updatedContributors.find(c => c.name.toLowerCase() === user.name.toLowerCase())?.rank || user.rank;
+      const updatedUser = {
+        ...user,
+        coins: (user.coins !== undefined ? user.coins : 0) + 50,
+        rank: userRankInList,
+        completed: (user.completed || 0) + 1
+      };
+      setUser(updatedUser);
+      localStorage.setItem('tsec_user', JSON.stringify(updatedUser));
     }
+
+    setContributionPoints(prev => prev + 25);
+    pushNotification("Upload Approved", `'${item.title}' is now public!`);
   };
 
-  const rejectPending = async (id) => {
+  const rejectPending = (id) => {
     const item = pendingUploads.find(p => p.id === id);
     if (!item) return;
 
     const nextPending = pendingUploads.filter(p => p.id !== id);
-    try {
-      await backend.savePending(nextPending);
-      setPendingUploads(nextPending);
-      pushNotification("Upload Rejected", `'${item.title}' was declined.`);
-    } catch (err) {
-      console.error(err);
-      pushNotification("Rejection Failed", err.message || "Unable to update this pending upload right now.");
-    }
+    setPendingUploads(nextPending);
+    dbMock.savePending(nextPending);
+    pushNotification("Upload Rejected", `'${item.title}' was declined.`);
   };
 
   // Filtered Resources Engine
@@ -1275,38 +1025,25 @@ int main() {
   };
 
   // Add Deadline Action
-  const handleAddDeadline = async (e) => {
+  const handleAddDeadline = (e) => {
     e.preventDefault();
     if (!deadlineTitle || !deadlineSub || !deadlineDate) return;
-    if (isRealSupabase && (!user || !user.id)) {
-      pushNotification("Login Required", "Please sign in before adding a personal deadline.");
-      return;
-    }
 
-    const userId = user?.id || user?.email || 'anonymous';
-    const newDeadline = {
-      id: `personal-${generateId()}`,
-      userId,
-      name: deadlineTitle,
+    const newDate = {
+      id: generateId(),
+      title: deadlineTitle,
       subject: deadlineSub,
-      dueDate: new Date(deadlineDate).toISOString(),
-      status: 'Active',
-      orderId: ''
+      date: deadlineDate
     };
 
-    try {
-      const savedDeadline = await backend.addDeadline(newDeadline);
-      const nextDeadlines = sortDashboardDeadlines([...dashboardDeadlines, savedDeadline]);
-      applyDashboardDeadlines(nextDeadlines);
+    const nextDates = [...deadlines, newDate].sort((a, b) => new Date(a.date) - new Date(b.date));
+    setDeadlines(nextDates);
+    dbMock.saveDeadlines(nextDates);
 
-      setDeadlineTitle('');
-      setDeadlineSub('');
-      setDeadlineDate('');
-      pushNotification("Deadline Saved", `'${deadlineTitle}' added to submission calendar.`);
-    } catch (err) {
-      console.error(err);
-      pushNotification("Deadline Save Failed", err.message || "Unable to add this deadline right now.");
-    }
+    setDeadlineTitle('');
+    setDeadlineSub('');
+    setDeadlineDate('');
+    pushNotification("Deadline Saved", `'${deadlineTitle}' added to submission calendar.`);
   };
 
   // Calendar Day Cells
@@ -1318,7 +1055,6 @@ int main() {
     const totalDays = new Date(year, month + 1, 0).getDate();
     const prevMonthTotalDays = new Date(year, month, 0).getDate();
 
-    const today = new Date();
     const cells = [];
     // Previous Month Days
     for (let i = firstDayIndex - 1; i >= 0; i--) {
@@ -1327,10 +1063,7 @@ int main() {
     // Current Month Days
     for (let d = 1; d <= totalDays; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const isToday =
-        d === today.getDate() &&
-        month === today.getMonth() &&
-        year === today.getFullYear();
+      const isToday = d === 26 && month === 5 && year === 2026;
       const fileDeadlines = deadlines.filter(dl => dl.date === dateStr);
 
       cells.push({
@@ -2624,7 +2357,7 @@ int main() {
                     </div>
 
                     <div className="flex-grow mt-3">
-{notesLoading ? (
+                      {notesLoading ? (
                         <div className="flex flex-col justify-center items-center py-12 text-xs text-sky-500 animate-pulse font-medium">
                           <span className="skeleton-line w-40 h-4 mb-2"></span>
                           Compiling outline parameters...
@@ -2654,11 +2387,132 @@ int main() {
 
         {/* ── DEADLINES TAB ───────────────────────────────────────── */}
         {activeTab === 'calendar' && (
-          <div className="animate-fade-in py-6 max-w-7xl mx-auto px-4 sm:px-6 flex flex-col gap-6 relative">
+          <div className="animate-fade-in py-6 max-w-4xl mx-auto px-4 sm:px-6 flex flex-col gap-6 relative">
             
-            {/* Congratulations Reward Banner */}
+            {/* 1. Hi Anjali! Greeting Card Banner */}
+            <div className="p-6 rounded-3xl tsec-glass-card relative overflow-hidden flex flex-col gap-4 text-left">
+              {/* Subtle background glow decorative elements */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-sky-500/10 rounded-full blur-xl pointer-events-none"></div>
+              
+              <div className="flex flex-col gap-1 text-left relative z-10">
+                <h1 className="text-xl sm:text-2xl font-extrabold font-heading text-[var(--text-primary)] flex items-center gap-2">
+                  <span>👋 Hey Buddy!</span>
+                  <GraduationCap className="text-purple-500 animate-float-slow" size={24} />
+                </h1>
+                <p className="text-xs sm:text-sm text-[var(--text-secondary)] font-medium">
+                  Need help completing your assignments? Order from top writers!
+                </p>
+              </div>
+
+              {/* Dynamic status pill badges */}
+              <div className="flex flex-wrap gap-2.5 mt-1 text-left">
+                <div className="flex items-center gap-1.5 px-3.5 py-1.5 text-[10px] sm:text-xs font-bold text-red-600 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 border border-red-500/20 rounded-full shadow-sm hover:scale-105 transition-all">
+                  <Flame size={12} className="animate-pulse" />
+                  <span>{dashboardActiveOrders.length} ACTIVE ORDERS</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3.5 py-1.5 text-[10px] sm:text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 rounded-full shadow-sm hover:scale-105 transition-all">
+                  <Bot size={12} className="hover-spin-slow" />
+                  <span>25+ WRITERS ONLINE</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3.5 py-1.5 text-[10px] sm:text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 dark:bg-purple-500/20 border border-purple-500/20 rounded-full shadow-sm hover:scale-105 transition-all">
+                  <Clock size={12} className="hover-bounce" />
+                  <span>24H EXPRESS AVAIL.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Horizontal/Vertical Stepper Status Indicator */}
+            <div className="p-5 rounded-3xl tsec-glass-card">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-3 text-left">
+                {/* Step 1 */}
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-sm transition-all duration-300 ${
+                    activeAccordion === 'assignment' || activeAccordion === 'manual'
+                      ? 'bg-purple-600 text-white ring-4 ring-purple-600/20 animate-pulse'
+                      : cartOrder
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-color)]'
+                  }`}>
+                    {cartOrder ? '✓' : 1}
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-bold text-[var(--text-primary)] leading-tight">Order Details</div>
+                    <div className="text-[9px] text-[var(--text-muted)] font-medium">Upload questions</div>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-sm transition-all duration-300 ${
+                    activeAccordion === 'assignment' || activeAccordion === 'manual'
+                      ? 'bg-purple-600 text-white ring-4 ring-purple-600/20 animate-pulse'
+                      : cartOrder
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-color)]'
+                  }`}>
+                    {cartOrder ? '✓' : 2}
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-bold text-[var(--text-primary)] leading-tight">Lab Manual</div>
+                    <div className="text-[9px] text-[var(--text-muted)] font-medium">Provide details</div>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-sm transition-all duration-300 ${
+                    activeAccordion === 'pricing' && paymentStep === 1
+                      ? 'bg-purple-600 text-white ring-4 ring-purple-600/20 animate-pulse'
+                      : paymentStep > 1
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-color)]'
+                  }`}>
+                    {paymentStep > 1 ? '✓' : 3}
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-bold text-[var(--text-primary)] leading-tight">Set Deadline</div>
+                    <div className="text-[9px] text-[var(--text-muted)] font-medium">Choose speed</div>
+                  </div>
+                </div>
+
+                {/* Step 4 */}
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-sm transition-all duration-300 ${
+                    activeAccordion === 'pricing' && paymentStep === 2
+                      ? 'bg-purple-600 text-white ring-4 ring-purple-600/20 animate-pulse'
+                      : paymentStep > 2
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-color)]'
+                  }`}>
+                    {paymentStep > 2 ? '✓' : 4}
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-bold text-[var(--text-primary)] leading-tight">Pay Order</div>
+                    <div className="text-[9px] text-[var(--text-muted)] font-medium">Secure checkout</div>
+                  </div>
+                </div>
+
+                {/* Step 5 */}
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-sm transition-all duration-300 ${
+                    paymentStep === 3
+                      ? 'bg-emerald-500 text-white ring-4 ring-emerald-500/20 shadow-lg'
+                      : 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-color)]'
+                  }`}>
+                    {paymentStep === 3 ? '✓' : 5}
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-bold text-[var(--text-primary)] leading-tight">Order Placed</div>
+                    <div className="text-[9px] text-[var(--text-muted)] font-medium">Writers assigned</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Congratulations Reward Popup / Modal */}
             {rewardModalOpen && (
-              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1100] flex items-center justify-center p-4 animate-fade-in">
+              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4 animate-fade-in">
                 <div className="bg-white dark:bg-slate-900 rounded-[24px] p-8 max-w-sm w-full text-center shadow-2xl border border-[var(--border-color)] relative overflow-hidden animate-scale-in">
                   <div className="absolute inset-0 pointer-events-none">
                     <div className="absolute top-10 left-10 w-2.5 h-2.5 bg-pink-500 rounded-full animate-ping"></div>
@@ -2704,776 +2558,494 @@ int main() {
               </div>
             )}
 
-            {/* Header Banner & Stats Counters Card */}
-            <div className="p-6 rounded-3xl tsec-glass-card relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 text-left">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-tr from-purple-500/5 to-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
-              
-              <div className="flex flex-col gap-1 relative z-10">
-                <h1 className="text-2xl sm:text-3xl font-extrabold font-heading text-[var(--text-primary)] flex items-center gap-2">
-                  <span>Deadlines Dashboard</span>
-                  <CalendarRange className="text-purple-500 animate-float-slow shrink-0" size={26} />
+            {/* CENTERED SECTION: Order Creation Panel */}
+            <div className="flex flex-col gap-6 text-left max-w-3xl mx-auto w-full">
+              <div className="border-b border-[var(--border-color)] pb-3">
+                <h1 className="text-2xl font-extrabold font-heading tracking-tight text-[var(--text-primary)]">
+                  Order Creation Panel
                 </h1>
-                <p className="text-xs sm:text-sm text-[var(--text-secondary)] font-medium">
-                  Track your assignment submissions and order custom work in real-time.
+                <p className="text-xs text-[var(--text-secondary)] mt-1">
+                  Configure assignment or manual requirements to match writer services.
                 </p>
               </div>
 
-              {/* Quick Stats Grid */}
-              <div className="grid grid-cols-3 gap-2.5 sm:gap-4 w-full sm:w-auto z-10 shrink-0">
-                <div className="p-3 bg-purple-500/5 border border-purple-500/10 rounded-2xl flex flex-col items-center justify-center min-w-[75px] sm:min-w-[90px] shadow-sm">
-                  <span className="text-lg font-black text-purple-500">{dashboardDeadlines.filter(d => d.status !== 'Completed').length}</span>
-                  <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Active</span>
-                </div>
-                <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl flex flex-col items-center justify-center min-w-[75px] sm:min-w-[90px] shadow-sm">
-                  <span className="text-lg font-black text-emerald-500">{dashboardDeadlines.filter(d => d.status === 'Completed').length}</span>
-                  <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Done</span>
-                </div>
-                <div className="p-3 bg-red-500/5 border border-red-500/10 rounded-2xl flex flex-col items-center justify-center min-w-[75px] sm:min-w-[90px] shadow-sm">
-                  <span className="text-lg font-black text-red-500">
-                    {dashboardDeadlines.filter(d => {
-                      const diff = new Date(d.dueDate) - currentTime;
-                      return d.status !== 'Completed' && diff <= 0;
-                    }).length}
-                  </span>
-                  <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Overdue</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Stepper Status Indicators */}
-            <div className="p-5 rounded-3xl tsec-glass-card">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-3 text-left">
-                {/* Step 1 */}
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-sm transition-all duration-300 ${
-                    activeAccordion === 'assignment' || activeAccordion === 'manual'
-                      ? 'bg-purple-600 text-white ring-4 ring-purple-600/20 animate-pulse'
-                      : cartOrder
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-color)]'
-                  }`}>
-                    {cartOrder ? '✓' : 1}
+              {/* Accordion 1: Assignment Order */}
+              <div className="tsec-dashboard-card overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setActiveAccordion(activeAccordion === 'assignment' ? null : 'assignment')}
+                  className="w-full p-5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all font-extrabold text-sm tracking-wide text-left cursor-pointer uppercase font-heading text-[var(--text-primary)]"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-sans font-extrabold">1</span>
+                    <span>Assignment Order</span>
                   </div>
-                  <div>
-                    <div className="text-[11px] font-bold text-[var(--text-primary)] leading-tight">Order Details</div>
-                    <div className="text-[9px] text-[var(--text-muted)] font-medium">Upload questions</div>
-                  </div>
-                </div>
+                  <ChevronDown size={16} className={`transition-transform duration-300 ${activeAccordion === 'assignment' ? 'rotate-180' : ''}`} />
+                </button>
 
-                {/* Step 2 */}
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-sm transition-all duration-300 ${
-                    activeAccordion === 'assignment' || activeAccordion === 'manual'
-                      ? 'bg-purple-600 text-white ring-4 ring-purple-600/20 animate-pulse'
-                      : cartOrder
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-color)]'
-                  }`}>
-                    {cartOrder ? '✓' : 2}
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-bold text-[var(--text-primary)] leading-tight">Pages & Details</div>
-                    <div className="text-[9px] text-[var(--text-muted)] font-medium">Select speed</div>
-                  </div>
-                </div>
-
-                {/* Step 3 */}
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-sm transition-all duration-300 ${
-                    activeAccordion === 'pricing' && paymentStep === 1
-                      ? 'bg-purple-600 text-white ring-4 ring-purple-600/20 animate-pulse'
-                      : paymentStep > 1
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-color)]'
-                  }`}>
-                    {paymentStep > 1 ? '✓' : 3}
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-bold text-[var(--text-primary)] leading-tight">Set Deadline</div>
-                    <div className="text-[9px] text-[var(--text-muted)] font-medium">Choose speed</div>
-                  </div>
-                </div>
-
-                {/* Step 4 */}
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-sm transition-all duration-300 ${
-                    activeAccordion === 'pricing' && paymentStep === 2
-                      ? 'bg-purple-600 text-white ring-4 ring-purple-600/20 animate-pulse'
-                      : paymentStep > 2
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-color)]'
-                  }`}>
-                    {paymentStep > 2 ? '✓' : 4}
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-bold text-[var(--text-primary)] leading-tight">Pay Order</div>
-                    <div className="text-[9px] text-[var(--text-muted)] font-medium">Secure checkout</div>
-                  </div>
-                </div>
-
-                {/* Step 5 */}
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-sm transition-all duration-300 ${
-                    paymentStep === 3
-                      ? 'bg-emerald-500 text-white ring-4 ring-emerald-500/20 shadow-lg animate-bounce'
-                      : 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-color)]'
-                  }`}>
-                    {paymentStep === 3 ? '✓' : 5}
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-bold text-[var(--text-primary)] leading-tight">Order Placed</div>
-                    <div className="text-[9px] text-[var(--text-muted)] font-medium">Writers assigned</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Split Responsive Columns */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              
-              {/* Left Column: Deadlines Hub */}
-              <div className="lg:col-span-7 flex flex-col gap-5 text-left">
-                
-                {/* Search, Filter, and Sort Toolbar */}
-                <div className="p-4 rounded-3xl tsec-glass-card flex flex-col sm:flex-row gap-4 items-center justify-between">
-                  <div className="relative w-full sm:max-w-xs font-heading">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={15} />
-                    <input 
-                      type="text"
-                      placeholder="Search deadlines or orders..."
-                      value={deadlineSearchQuery}
-                      onChange={(e) => setDeadlineSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all font-medium font-heading"
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
-                    <div className="flex bg-[var(--bg-secondary)] p-1 rounded-xl border border-[var(--border-color)] text-xs font-bold font-heading">
-                      <button
-                        type="button"
-                        onClick={() => setDeadlineFilter('all')}
-                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${deadlineFilter === 'all' ? 'bg-blue-600 text-white shadow' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                      >
-                        All
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeadlineFilter('active')}
-                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${deadlineFilter === 'active' ? 'bg-blue-600 text-white shadow' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                      >
-                        Active
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeadlineFilter('completed')}
-                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${deadlineFilter === 'completed' ? 'bg-blue-600 text-white shadow' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                      >
-                        Done
-                      </button>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setDeadlineSort(prev => prev === 'nearest' ? 'latest' : 'nearest')}
-                      className="p-2 border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl cursor-pointer transition-all flex items-center gap-1.5 text-xs font-bold font-heading"
-                      title="Toggle due date sorting"
-                    >
-                      <ArrowUpDown size={13} />
-                      <span>{deadlineSort === 'nearest' ? 'Nearest First' : 'Latest First'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Deadlines List */}
-                <div className="flex flex-col gap-4">
-                  {(() => {
-                    // Filter deadlines
-                    let filtered = dashboardDeadlines.filter(d => {
-                      const searchMatch = (d.name || '').toLowerCase().includes((deadlineSearchQuery || '').toLowerCase()) || 
-                                          (d.subject || '').toLowerCase().includes((deadlineSearchQuery || '').toLowerCase()) || 
-                                          (d.orderId || '').toLowerCase().includes((deadlineSearchQuery || '').toLowerCase());
-                      if (!searchMatch) return false;
-
-                      if (deadlineFilter === 'active') return d.status !== 'Completed';
-                      if (deadlineFilter === 'completed') return d.status === 'Completed';
-                      return true;
-                    });
-
-                    // Sort deadlines
-                    filtered.sort((a, b) => {
-                      const dateA = new Date(a.dueDate);
-                      const dateB = new Date(b.dueDate);
-                      return deadlineSort === 'nearest' ? dateA - dateB : dateB - dateA;
-                    });
-
-                    if (filtered.length === 0) {
-                      return (
-                        <div className="p-12 text-center rounded-3xl tsec-glass-card border border-dashed border-[var(--border-color)] flex flex-col items-center justify-center gap-4 animate-scale-in">
-                          <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-900 border border-[var(--border-color)] flex items-center justify-center text-3xl">
-                            🗂️
-                          </div>
-                          <div>
-                            <h3 className="font-extrabold text-sm text-[var(--text-primary)] uppercase tracking-wider font-heading">No Deadlines Found</h3>
-                            <p className="text-xs text-[var(--text-muted)] font-medium mt-1">
-                              Clear your search/filters or submit your requirements in the order creation panel.
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    return filtered.map(d => {
-                      const isCompleted = d.status === 'Completed';
-                      const diffMs = new Date(d.dueDate) - currentTime;
-                      const isOverdue = !isCompleted && diffMs <= 0;
+                <div className={`accordion-wrapper ${activeAccordion === 'assignment' ? 'open' : ''}`}>
+                  <div className="accordion-inner">
+                    <div className="p-6 border-t border-[var(--border-color)] flex flex-col gap-5">
                       
-                      // Progress percentage based on 7 days span (86400000 * 7 = 604800000 ms)
-                      const maxSpan = 604800000;
-                      const progressPct = isCompleted 
-                        ? 100 
-                        : isOverdue 
-                          ? 0 
-                          : Math.max(0, Math.min(100, Math.round((diffMs / maxSpan) * 100)));
-                      
-                      // Formatted due date string
-                      const dateStr = new Date(d.dueDate).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      });
+                      {/* Subject Name Input */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Subject Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Applied Physics Lab 3 Report"
+                          value={assignmentSubject}
+                          onChange={(e) => setAssignmentSubject(e.target.value)}
+                          className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium"
+                        />
+                      </div>
 
-                      return (
-                        <div 
-                          key={d.id} 
-                          className={`p-5 rounded-3xl tsec-glass-card border transition-all duration-300 hover:scale-[1.01] hover:shadow-md relative overflow-hidden flex flex-col gap-4 ${
-                            isCompleted 
-                              ? 'border-emerald-500/10 bg-emerald-500/[0.01]' 
-                              : isOverdue 
-                                ? 'border-red-500/20 bg-red-500/[0.01]' 
-                                : diffMs < 86400000 
-                                  ? 'border-red-500/20 bg-red-500/[0.01] ring-1 ring-red-500/10' 
-                                  : 'border-[var(--border-color)]'
-                          }`}
-                        >
-                          {/* Top row */}
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="flex items-start gap-3.5">
-                              {/* Custom checkbox */}
-                              <button
-                                type="button"
-                                onClick={() => handleToggleDeadlineStatus(d.id)}
-                                className={`w-5 h-5 rounded-md border flex items-center justify-center mt-0.5 cursor-pointer transition-all ${
-                                  isCompleted 
-                                    ? 'bg-emerald-500 border-emerald-500 text-white' 
-                                    : 'border-[var(--border-color)] hover:border-purple-500'
-                                }`}
-                              >
-                                {isCompleted && <Check size={12} strokeWidth={3} />}
-                              </button>
-
-                              <div className="flex flex-col gap-0.5">
-                                <h3 className={`font-extrabold text-xs sm:text-sm font-heading leading-tight ${isCompleted ? 'line-through text-[var(--text-muted)]' : 'text-[var(--text-primary)]'}`}>
-                                  {d.name}
-                                </h3>
-                                <p className="text-[10px] text-[var(--text-secondary)] font-semibold uppercase tracking-wider font-mono">
-                                  {d.subject}
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Actions & ID badge */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-[9px] font-bold font-mono px-2 py-0.5 bg-slate-100 dark:bg-slate-900 border border-[var(--border-color)] rounded text-[var(--text-secondary)]">
-                                {d.orderId}
-                              </span>
-                              {d.id.toString().startsWith("personal-") && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeletePersonalDeadline(d.id)}
-                                  className="p-1 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded-lg cursor-pointer transition-all"
-                                  title="Delete personal task"
-                                >
-                                  <Trash2 size={13} />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Countdown timer & details row */}
-                          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-color)]/60 pt-3">
-                            <div className="flex items-center gap-1.5">
-                              <Clock size={12} className={isCompleted ? 'text-emerald-500' : isOverdue ? 'text-red-500 animate-pulse' : 'text-purple-500'} />
-                              <span className={`text-[10px] sm:text-xs font-bold font-mono ${
-                                isCompleted 
-                                  ? 'text-emerald-500 dark:text-emerald-400' 
-                                  : isOverdue || diffMs < 86400000 
-                                    ? 'text-red-500 dark:text-red-400 animate-pulse' 
-                                    : 'text-[var(--text-secondary)]'
-                              }`}>
-                                {getCountdown(d.dueDate, isCompleted, currentTime)}
-                              </span>
-                            </div>
-
-                            <span className="text-[10px] text-[var(--text-muted)] font-bold font-mono">
-                              Due: {dateStr}
-                            </span>
-                          </div>
-
-                          {/* Time Progress Bar */}
-                          <div className="w-full flex flex-col gap-1 mt-1">
-                            <div className="flex justify-between items-center text-[9px] font-mono font-bold">
-                              <span className="text-[var(--text-muted)] uppercase tracking-wider">Remaining Time Progress</span>
-                              <span className={isCompleted ? 'text-emerald-500' : isOverdue ? 'text-red-500' : 'text-purple-500'}>
-                                {progressPct}%
-                              </span>
-                            </div>
-                            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-900 border border-[var(--border-color)] rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full transition-all duration-500 ${
-                                  isCompleted 
-                                    ? 'bg-emerald-500' 
-                                    : isOverdue 
-                                      ? 'bg-red-500' 
-                                      : diffMs < 86400000 
-                                        ? 'bg-red-500' 
-                                        : 'bg-gradient-to-r from-blue-500 to-purple-500'
-                                }`}
-                                style={{ width: `${progressPct}%` }}
-                              />
-                            </div>
-                          </div>
-
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-
-              </div>
-
-              {/* Right Column: Interactive Sidebar (Accordions + Custom Deadline Form) */}
-              <div className="lg:col-span-5 flex flex-col gap-6 text-left">
-                
-                <div className="flex items-center gap-2 border-b border-[var(--border-color)] pb-3">
-                  <Sparkles size={16} className="text-purple-500 animate-pulse" />
-                  <h2 className="font-extrabold text-sm uppercase tracking-wider font-heading text-[var(--text-primary)]">Services & Checkout</h2>
-                </div>
-
-                {/* Accordion 1: Assignment Order */}
-                <div className="tsec-dashboard-card overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setActiveAccordion(activeAccordion === 'assignment' ? null : 'assignment')}
-                    className="w-full p-4 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all font-extrabold text-xs tracking-wide text-left cursor-pointer uppercase font-heading text-[var(--text-primary)]"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[9px] font-sans font-extrabold">1</span>
-                      <span>Assignment Order</span>
-                    </div>
-                    <ChevronDown size={14} className={`transition-transform duration-300 ${activeAccordion === 'assignment' ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  <div className={`accordion-wrapper ${activeAccordion === 'assignment' ? 'open' : ''}`}>
-                    <div className="accordion-inner">
-                      <div className="p-5 border-t border-[var(--border-color)] flex flex-col gap-4">
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Subject Name</label>
+                      {/* Grid for Deadline and Pages */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Deadline Date Picker */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Deadline Date</label>
                           <input
-                            type="text"
-                            placeholder="e.g. Applied Physics Lab 3 Report"
-                            value={assignmentSubject}
-                            onChange={(e) => setAssignmentSubject(e.target.value)}
-                            className="w-full p-3 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all font-medium"
+                            type="date"
+                            value={assignmentDeadline}
+                            onChange={(e) => setAssignmentDeadline(e.target.value)}
+                            min={new Date().toISOString().split('T')[0]}
+                            className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium font-mono"
                           />
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Deadline Date</label>
-                            <input
-                              type="date"
-                              value={assignmentDeadline}
-                              onChange={(e) => setAssignmentDeadline(e.target.value)}
-                              min={new Date().toISOString().split('T')[0]}
-                              className="w-full p-3 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all font-medium font-mono"
-                            />
+                        {/* Number of Pages Selector */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Number of Pages (1-100)</label>
+                          <select
+                            value={assignmentPages}
+                            onChange={(e) => setAssignmentPages(Number(e.target.value))}
+                            className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium"
+                          >
+                            {Array.from({ length: 100 }, (_, i) => i + 1).map(num => (
+                              <option key={num} value={num}>{num} {num === 1 ? 'Page' : 'Pages'}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Drag & Drop File Upload */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">File Upload Section</label>
+                        <div className="border-2 border-dashed border-[var(--border-color)] hover:border-blue-500/30 rounded-2xl p-6 bg-slate-50/20 dark:bg-slate-900/10 transition-all text-center flex flex-col items-center justify-center cursor-pointer group relative">
+                          <input 
+                            type="file" 
+                            multiple 
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              const formatted = files.map(f => ({ name: f.name, size: (f.size / 1024).toFixed(1) + ' KB' }));
+                              setAssignmentFiles(prev => [...prev, ...formatted]);
+                              pushNotification("File Added", `${files.length} file(s) attached.`);
+                            }}
+                          />
+                          <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-all">
+                            <Plus size={18} />
                           </div>
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Pages (1-100)</label>
-                            <select
-                              value={assignmentPages}
-                              onChange={(e) => setAssignmentPages(Number(e.target.value))}
-                              className="w-full p-3 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all font-medium"
-                            >
-                              {Array.from({ length: 50 }, (_, i) => i + 1).map(num => (
-                                <option key={num} value={num}>{num} {num === 1 ? 'Page' : 'Pages'}</option>
-                              ))}
-                            </select>
-                          </div>
+                          <p className="text-xs font-bold text-[var(--text-primary)]">Drag & drop files here or click to browse</p>
+                          <p className="text-[10px] text-[var(--text-muted)] font-semibold mt-1">PDF, Word, or images up to 25MB</p>
                         </div>
 
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Question/Guideline File Upload</label>
-                          <div className="border border-dashed border-[var(--border-color)] hover:border-blue-500/40 rounded-xl p-4 bg-slate-50/20 dark:bg-slate-900/10 transition-all text-center flex flex-col items-center justify-center cursor-pointer relative group">
-                            <input 
-                              type="file" 
-                              multiple 
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                              onChange={(e) => {
-                                const files = Array.from(e.target.files || []);
-                                const formatted = files.map(f => ({ name: f.name, size: (f.size / 1024).toFixed(1) + ' KB' }));
-                                setAssignmentFiles(prev => [...prev, ...formatted]);
-                                pushNotification("File Uploaded", `${files.length} document(s) attached.`);
-                              }}
-                            />
-                            <PlusCircle className="text-blue-500 group-hover:scale-110 transition-all mb-1" size={18} />
-                            <span className="text-[10px] font-bold text-[var(--text-primary)]">Click to add guidelines PDF</span>
-                          </div>
-                          {assignmentFiles.length > 0 && (
-                            <div className="flex flex-col gap-1.5 mt-2">
-                              {assignmentFiles.map((file, idx) => (
-                                <div key={idx} className="p-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-color)] flex items-center justify-between text-[10px] font-semibold">
-                                  <span className="truncate max-w-[150px] text-[var(--text-primary)]">{file.name}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => setAssignmentFiles(prev => prev.filter((_, i) => i !== idx))}
-                                    className="text-[var(--text-muted)] hover:text-red-500 cursor-pointer"
+                        {/* List uploaded files */}
+                        {assignmentFiles.length > 0 && (
+                          <div className="flex flex-col gap-1.5 mt-2">
+                            {assignmentFiles.map((file, idx) => (
+                              <div key={idx} className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-xs font-medium">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded">FILE</span>
+                                  <span className="text-[var(--text-primary)] truncate max-w-[200px] sm:max-w-xs">{file.name}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-[10px] text-[var(--text-muted)] font-mono">{file.size}</span>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => {
+                                      setAssignmentFiles(prev => prev.filter((_, i) => i !== idx));
+                                      pushNotification("File Removed", "Attached document removed.");
+                                    }}
+                                    className="text-[var(--text-muted)] hover:text-red-500 cursor-pointer p-0.5"
                                   >
-                                    <X size={12} />
+                                    <X size={13} />
                                   </button>
                                 </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
 
+                      {/* Bottom Info Block */}
+                      <div className="border-t border-[var(--border-color)] pt-5 mt-2 flex justify-end">
                         <button
                           type="button"
                           onClick={() => {
                             if (!assignmentSubject || !assignmentDeadline) {
-                              pushNotification("Missing Info", "Subject name and deadline date are required.");
+                              pushNotification("Incomplete Fields", "Please specify subject and deadline.");
                               return;
                             }
-                            const basePrice = assignmentPages * 10.0;
+                            const price = assignmentPages * 10.0;
                             setCartOrder({
                               type: 'Assignment Order',
                               subject: assignmentSubject,
                               deadline: assignmentDeadline,
                               pages: assignmentPages,
                               files: assignmentFiles,
-                              price: basePrice
+                              price: price
                             });
-                            pushNotification("Added to Cart", `'${assignmentSubject}' homework order saved.`);
+                            pushNotification("Added to Cart", `'${assignmentSubject}' added to checkout.`);
                             setActiveAccordion('pricing');
                             setPaymentStep(1);
+
+                            // Scroll smoothly to pricing section
+                            setTimeout(() => {
+                              const el = document.getElementById('pricing-accordion');
+                              if (el) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }
+                            }, 150);
                           }}
-                          className="w-full py-2.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center flex items-center justify-center gap-1.5 font-heading"
+                          className="px-5 py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center flex items-center justify-center gap-1.5"
                         >
                           <span>Add to Cart</span>
                         </button>
                       </div>
+
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Accordion 2: Manual / Project Order */}
-                <div className="tsec-dashboard-card overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setActiveAccordion(activeAccordion === 'manual' ? null : 'manual')}
-                    className="w-full p-4 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all font-extrabold text-xs tracking-wide text-left cursor-pointer uppercase font-heading text-[var(--text-primary)]"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[9px] font-sans font-extrabold">2</span>
-                      <span>Lab Manual / Project</span>
-                    </div>
-                    <ChevronDown size={14} className={`transition-transform duration-300 ${activeAccordion === 'manual' ? 'rotate-180' : ''}`} />
-                  </button>
+              {/* Accordion 2: Manual Order */}
+              <div className="tsec-dashboard-card overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setActiveAccordion(activeAccordion === 'manual' ? null : 'manual')}
+                  className="w-full p-5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all font-extrabold text-sm tracking-wide text-left cursor-pointer uppercase font-heading text-[var(--text-primary)]"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-sans font-extrabold">2</span>
+                    <span>Manual Order</span>
+                  </div>
+                  <ChevronDown size={16} className={`transition-transform duration-300 ${activeAccordion === 'manual' ? 'rotate-180' : ''}`} />
+                </button>
 
-                  <div className={`accordion-wrapper ${activeAccordion === 'manual' ? 'open' : ''}`}>
-                    <div className="accordion-inner">
-                      <div className="p-5 border-t border-[var(--border-color)] flex flex-col gap-4">
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Project/Manual Name</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Mechanical Workshop Manual 4"
-                            value={manualSubject}
-                            onChange={(e) => setManualSubject(e.target.value)}
-                            className="w-full p-3 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all font-medium"
+                <div className={`accordion-wrapper ${activeAccordion === 'manual' ? 'open' : ''}`}>
+                  <div className="accordion-inner">
+                    <div className="p-6 border-t border-[var(--border-color)] flex flex-col gap-5">
+                      
+                      {/* Subject Name Input */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Subject Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Mechanical Workshop Manual 4"
+                          value={manualSubject}
+                          onChange={(e) => setManualSubject(e.target.value)}
+                          className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium"
+                        />
+                      </div>
+
+                      {/* Deadline Date Picker */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Deadline Date</label>
+                        <input
+                          type="date"
+                          value={manualDeadline}
+                          onChange={(e) => setManualDeadline(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium font-mono"
+                        />
+                      </div>
+
+                      {/* Number of Pages Selector */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Number of Pages (1-100)</label>
+                        <select
+                          value={manualPages}
+                          onChange={(e) => setManualPages(Number(e.target.value))}
+                          className="w-full p-3.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium"
+                        >
+                          {Array.from({ length: 100 }, (_, i) => i + 1).map(num => (
+                            <option key={num} value={num}>{num} {num === 1 ? 'Page' : 'Pages'}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Drag & Drop File Upload */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">File Upload Section</label>
+                        <div className="border-2 border-dashed border-[var(--border-color)] hover:border-blue-500/30 rounded-2xl p-6 bg-slate-50/20 dark:bg-slate-900/10 transition-all text-center flex flex-col items-center justify-center cursor-pointer group relative">
+                          <input 
+                            type="file" 
+                            multiple 
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              const formatted = files.map(f => ({ name: f.name, size: (f.size / 1024).toFixed(1) + ' KB' }));
+                              setManualFiles(prev => [...prev, ...formatted]);
+                              pushNotification("File Added", `${files.length} file(s) attached.`);
+                            }}
                           />
+                          <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-all">
+                            <Plus size={18} />
+                          </div>
+                          <p className="text-xs font-bold text-[var(--text-primary)]">Drag & drop files here or click to browse</p>
+                          <p className="text-[10px] text-[var(--text-muted)] font-semibold mt-1">PDF, Word, or images up to 25MB</p>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Deadline Date</label>
-                            <input
-                              type="date"
-                              value={manualDeadline}
-                              onChange={(e) => setManualDeadline(e.target.value)}
-                              min={new Date().toISOString().split('T')[0]}
-                              className="w-full p-3 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all font-medium font-mono"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Pages/Exps (1-50)</label>
-                            <select
-                              value={manualPages}
-                              onChange={(e) => setManualPages(Number(e.target.value))}
-                              className="w-full p-3 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all font-medium"
-                            >
-                              {Array.from({ length: 50 }, (_, i) => i + 1).map(num => (
-                                <option key={num} value={num}>{num} {num === 1 ? 'Exp' : 'Exps'}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Guideline File Upload</label>
-                          <div className="border border-dashed border-[var(--border-color)] hover:border-blue-500/40 rounded-xl p-4 bg-slate-50/20 dark:bg-slate-900/10 transition-all text-center flex flex-col items-center justify-center cursor-pointer relative group">
-                            <input 
-                              type="file" 
-                              multiple 
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                              onChange={(e) => {
-                                const files = Array.from(e.target.files || []);
-                                const formatted = files.map(f => ({ name: f.name, size: (f.size / 1024).toFixed(1) + ' KB' }));
-                                setManualFiles(prev => [...prev, ...formatted]);
-                                pushNotification("Manual Attached", `${files.length} document(s) uploaded.`);
-                              }}
-                            />
-                            <PlusCircle className="text-blue-500 group-hover:scale-110 transition-all mb-1" size={18} />
-                            <span className="text-[10px] font-bold text-[var(--text-primary)]">Click to add project brief</span>
-                          </div>
-                          {manualFiles.length > 0 && (
-                            <div className="flex flex-col gap-1.5 mt-2">
-                              {manualFiles.map((file, idx) => (
-                                <div key={idx} className="p-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-color)] flex items-center justify-between text-[10px] font-semibold">
-                                  <span className="truncate max-w-[150px] text-[var(--text-primary)]">{file.name}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => setManualFiles(prev => prev.filter((_, i) => i !== idx))}
-                                    className="text-[var(--text-muted)] hover:text-red-500 cursor-pointer"
+                        {/* List uploaded files */}
+                        {manualFiles.length > 0 && (
+                          <div className="flex flex-col gap-1.5 mt-2">
+                            {manualFiles.map((file, idx) => (
+                              <div key={idx} className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-xs font-medium">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded">FILE</span>
+                                  <span className="text-[var(--text-primary)] truncate max-w-[200px] sm:max-w-xs">{file.name}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-[10px] text-[var(--text-muted)] font-mono">{file.size}</span>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => {
+                                      setManualFiles(prev => prev.filter((_, i) => i !== idx));
+                                      pushNotification("File Removed", "Attached document removed.");
+                                    }}
+                                    className="text-[var(--text-muted)] hover:text-red-500 cursor-pointer p-0.5"
                                   >
-                                    <X size={12} />
+                                    <X size={13} />
                                   </button>
                                 </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
 
+                      {/* Bottom Info Block */}
+                      <div className="border-t border-[var(--border-color)] pt-5 mt-2 flex justify-end">
                         <button
                           type="button"
                           onClick={() => {
                             if (!manualSubject || !manualDeadline) {
-                              pushNotification("Missing Info", "Manual subject name and deadline date are required.");
+                              pushNotification("Incomplete Fields", "Please specify subject and deadline.");
                               return;
                             }
-                            const basePrice = manualPages * 15.0;
+                            const price = manualPages * 15.0;
                             setCartOrder({
                               type: 'Manual Order',
                               subject: manualSubject,
                               deadline: manualDeadline,
                               pages: manualPages,
                               files: manualFiles,
-                              price: basePrice
+                              price: price
                             });
-                            pushNotification("Added to Cart", `'${manualSubject}' manual order saved.`);
+                            pushNotification("Added to Cart", `'${manualSubject}' manual order added to checkout.`);
                             setActiveAccordion('pricing');
                             setPaymentStep(1);
+
+                            // Scroll smoothly to pricing section
+                            setTimeout(() => {
+                              const el = document.getElementById('pricing-accordion');
+                              if (el) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }
+                            }, 150);
                           }}
-                          className="w-full py-2.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center flex items-center justify-center gap-1.5 font-heading"
+                          className="px-5 py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center flex items-center justify-center gap-1.5"
                         >
                           <span>Add to Cart</span>
                         </button>
                       </div>
+
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Accordion 3: Checkout / Payment Flow */}
-                <div id="pricing-accordion" className="tsec-dashboard-card overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setActiveAccordion(activeAccordion === 'pricing' ? null : 'pricing')}
-                    className="w-full p-4 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all font-extrabold text-xs tracking-wide text-left cursor-pointer uppercase font-heading text-[var(--text-primary)]"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[9px] font-sans font-extrabold">3</span>
-                      <span>Checkout & Payment</span>
-                    </div>
-                    <ChevronDown size={14} className={`transition-transform duration-300 ${activeAccordion === 'pricing' ? 'rotate-180' : ''}`} />
-                  </button>
+              {/* Accordion 3: Pricing & Order / Payment Flow */}
+              <div id="pricing-accordion" className="tsec-dashboard-card overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setActiveAccordion(activeAccordion === 'pricing' ? null : 'pricing')}
+                  className="w-full p-5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all font-extrabold text-sm tracking-wide text-left cursor-pointer uppercase font-heading text-[var(--text-primary)]"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-sans font-extrabold">3</span>
+                    <span>Pricing & Order</span>
+                  </div>
+                  <ChevronDown size={16} className={`transition-transform duration-300 ${activeAccordion === 'pricing' ? 'rotate-180' : ''}`} />
+                </button>
 
-                  <div className={`accordion-wrapper ${activeAccordion === 'pricing' ? 'open' : ''}`}>
-                    <div className="accordion-inner">
-                      <div className="p-5 border-t border-[var(--border-color)]">
-                        
-                        {/* Sub-step 1: Cart display */}
-                        {paymentStep === 1 && (
-                          <div className="flex flex-col gap-4">
-                            {!cartOrder ? (
-                              <div className="text-center py-8 text-xs text-[var(--text-muted)] font-medium">
-                                No order in checkout. Configure an order above and add it to checkout.
+                <div className={`accordion-wrapper ${activeAccordion === 'pricing' ? 'open' : ''}`}>
+                  <div className="accordion-inner">
+                    <div className="p-6 border-t border-[var(--border-color)]">
+                      
+                      {/* Sub-step 1: Cart display */}
+                      {paymentStep === 1 && (
+                        <div className="flex flex-col gap-5">
+                          {!cartOrder ? (
+                            <div className="text-center py-10 text-xs text-[var(--text-muted)] font-medium">
+                              No order selected. Fill in your Assignment or Manual order details above and click &apos;Add to Cart&apos;.
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-5 animate-fade-in text-left">
+                              {/* Selected Order Summary */}
+                              <div className="flex flex-col gap-3">
+                                <h3 className="font-extrabold text-xs text-[var(--text-primary)] font-heading uppercase tracking-wider font-mono border-b border-[var(--border-color)] pb-2">Selected Order Summary</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-semibold text-[var(--text-secondary)]">
+                                  <div>Order Type: <span className="text-[var(--text-primary)] font-bold">{cartOrder.type}</span></div>
+                                  <div>Subject: <span className="text-[var(--text-primary)] font-bold">{cartOrder.subject}</span></div>
+                                  <div>Number of Pages: <span className="text-[var(--text-primary)] font-bold">{cartOrder.pages} pages</span></div>
+                                  <div>Deadline Date: <span className="text-[var(--text-primary)] font-bold font-mono">{new Date(cartOrder.deadline).toLocaleDateString()}</span></div>
+                                </div>
                               </div>
-                            ) : (
-                              <div className="flex flex-col gap-4 animate-fade-in text-left">
-                                <div className="p-3 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl flex flex-col gap-2.5 text-xs font-semibold text-[var(--text-secondary)]">
-                                  <div className="flex justify-between border-b border-[var(--border-color)] pb-1.5">
-                                    <span className="text-[var(--text-muted)] uppercase tracking-wider font-mono text-[9px]">Type</span>
-                                    <span className="text-[var(--text-primary)] font-bold">{cartOrder.type}</span>
-                                  </div>
-                                  <div className="flex justify-between border-b border-[var(--border-color)] pb-1.5">
-                                    <span className="text-[var(--text-muted)] uppercase tracking-wider font-mono text-[9px]">Subject</span>
-                                    <span className="text-[var(--text-primary)] truncate max-w-[180px] font-bold">{cartOrder.subject}</span>
-                                  </div>
-                                  <div className="flex justify-between border-b border-[var(--border-color)] pb-1.5">
-                                    <span className="text-[var(--text-muted)] uppercase tracking-wider font-mono text-[9px]">Pages</span>
-                                    <span className="text-[var(--text-primary)] font-bold">{cartOrder.pages} pages</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-[var(--text-muted)] uppercase tracking-wider font-mono text-[9px]">Due Date</span>
-                                    <span className="text-[var(--text-primary)] font-bold font-mono">{new Date(cartOrder.deadline).toLocaleDateString()}</span>
-                                  </div>
-                                </div>
 
-                                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-[var(--border-color)] flex flex-col gap-2 text-xs">
-                                  <div className="flex justify-between text-[var(--text-secondary)] font-medium">
-                                    <span>Subtotal</span>
-                                    <span>₹{cartOrder.price.toFixed(2)}</span>
-                                  </div>
-                                  <div className="flex justify-between text-[var(--text-secondary)] font-medium">
-                                    <span>Tax (2.5%)</span>
-                                    <span>₹{(cartOrder.price * 0.025).toFixed(2)}</span>
-                                  </div>
-                                  <div className="flex justify-between text-sm font-extrabold text-[var(--text-primary)] border-t border-[var(--border-color)] pt-2.5 mt-1">
-                                    <span>Total Price</span>
-                                    <span className="text-purple-600 font-sans">₹{(cartOrder.price * 1.025).toFixed(2)}</span>
-                                  </div>
+                              {/* Price Calculation Table */}
+                              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-[var(--border-color)] flex flex-col gap-3.5">
+                                <div className="flex justify-between text-xs font-medium text-[var(--text-secondary)]">
+                                  <span>Number of Pages</span>
+                                  <span>{cartOrder.pages} pages</span>
                                 </div>
+                                <div className="flex justify-between text-xs font-medium text-[var(--text-secondary)]">
+                                  <span>Price Per Page</span>
+                                  <span>₹{cartOrder.type === 'Assignment Order' ? '10.00' : '15.00'}</span>
+                                </div>
+                                <div className="flex justify-between text-xs font-medium text-[var(--text-secondary)]">
+                                  <span>Tax (2.5%)</span>
+                                  <span>₹{(cartOrder.price * 0.025).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm font-extrabold text-[var(--text-primary)] border-t border-[var(--border-color)] pt-3">
+                                  <span>Total Price</span>
+                                  <span className="text-purple-600 font-sans">₹{(cartOrder.price * 1.025).toFixed(2)}</span>
+                                </div>
+                              </div>
 
+                              {/* Proceed Button */}
+                              <div className="flex justify-end mt-1">
                                 <button
                                   type="button"
                                   onClick={() => setPaymentStep(2)}
-                                  className="w-full py-3 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-1.5 font-heading"
+                                  className="px-6 py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-1.5"
                                 >
                                   <CreditCard size={13} />
-                                  <span>Proceed to Secure Payment</span>
+                                  <span>Proceed to Payment</span>
                                 </button>
                               </div>
-                            )}
-                          </div>
-                        )}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
-                        {/* Sub-step 2: Payment Portal details */}
-                        {paymentStep === 2 && cartOrder && (
+                      {/* Sub-step 2: Payment Portal details */}
+                      {paymentStep === 2 && cartOrder && (
+                        <div className="max-w-md mx-auto w-full animate-scale-in flex flex-col gap-5 text-left">
+                          <div className="flex items-center gap-2.5 border-b border-[var(--border-color)] pb-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-xs">🔒</div>
+                            <div>
+                              <h3 className="font-extrabold text-xs uppercase tracking-wider font-heading text-[var(--text-primary)]">Secure Payment Portal</h3>
+                              <p className="text-[10px] text-[var(--text-muted)] font-medium">Verify summary and input payment card info</p>
+                            </div>
+                          </div>
+
+                          <div className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] flex justify-between text-xs font-semibold text-[var(--text-secondary)]">
+                            <span>Total Due:</span>
+                            <span className="text-purple-600 font-sans">₹{(cartOrder.price * 1.025).toFixed(2)}</span>
+                          </div>
+
                           <form 
                             onSubmit={(e) => {
                               e.preventDefault();
                               if (!paymentCard || !paymentExpiry || !paymentCvv) {
-                                pushNotification("Empty fields", "Please fill in all credit card details.");
+                                pushNotification("Input Error", "Please fill in all credit card details.");
                                 return;
                               }
-                              if (isRealSupabase && (!user || !user.id)) {
-                                pushNotification("Login Required", "Please sign in before placing an order.");
-                                return;
-                              }
-                              pushNotification("Authorizing", "Authorizing secure card credentials...");
-                              setTimeout(async () => {
-                                try {
-                                  const userId = user?.id || user?.email || 'anonymous';
-                                  const newOrderId = "TSEC-" + (1000 + Math.floor(Math.random() * 9000));
-                                  const savedOrder = await backend.addOrder({
-                                    id: newOrderId,
-                                    userId,
-                                    subject: cartOrder.subject,
-                                    pages: cartOrder.pages,
-                                    type: cartOrder.type,
-                                    deadline: cartOrder.deadline,
-                                    price: cartOrder.price,
-                                    status: "Pending"
-                                  });
-                                  const updatedOrders = [savedOrder, ...dashboardActiveOrders];
-                                  setDashboardActiveOrders(updatedOrders);
+                              pushNotification("Authorizing Payment", "Processing secure card credentials...");
+                              setTimeout(() => {
+                                // Add to active orders
+                                const newOrder = {
+                                  id: "TSEC-" + (1000 + Math.floor(Math.random() * 9000)),
+                                  subject: cartOrder.subject,
+                                  pages: cartOrder.pages,
+                                  status: "Pending"
+                                };
+                                setDashboardActiveOrders(prev => [newOrder, ...prev]);
+                                
+                                // Add to deadlines list
+                                const newDeadline = {
+                                  id: generateId(),
+                                  name: `${cartOrder.type === 'Assignment Order' ? 'Assignment' : 'Manual'} Submission`,
+                                  subject: cartOrder.subject,
+                                  orderId: newOrder.id,
+                                  dueDate: new Date(cartOrder.deadline).toISOString(),
+                                  status: "Active"
+                                };
+                                setDashboardDeadlines(prev => [newDeadline, ...prev]);
 
-                                  const savedDeadline = await backend.addDeadline({
-                                    id: `order-${generateId()}`,
-                                    userId,
-                                    name: `${cartOrder.type === 'Assignment Order' ? 'Assignment' : 'Manual'} Submission`,
-                                    subject: cartOrder.subject,
-                                    orderId: newOrderId,
-                                    dueDate: new Date(cartOrder.deadline).toISOString(),
-                                    status: "Active"
-                                  });
-                                  const updatedDeadlines = sortDashboardDeadlines([savedDeadline, ...dashboardDeadlines]);
-                                  applyDashboardDeadlines(updatedDeadlines);
+                                // Add 10 loyalty coins (completed order)
+                                setLoyaltyCoins(prev => prev + 10);
 
-                                  setLoyaltyCoins(prev => prev + 10);
-
-                                  if (user) {
-                                    const updatedUser = {
-                                      ...user,
-                                      orders: (user.orders || 0) + 1
-                                    };
-                                    setUser(updatedUser);
-                                    localStorage.setItem('tsec_user', JSON.stringify(updatedUser));
-                                  }
-
-                                  setPaymentStep(3);
-                                  pushNotification("Payment Authorized", "Order registered and matched with top writers.");
-                                } catch (err) {
-                                  console.error(err);
-                                  pushNotification("Order Failed", err.message || "Unable to register this order right now.");
+                                // Increment user's orders count in real-time
+                                if (user) {
+                                  const updatedUser = {
+                                    ...user,
+                                    orders: (user.orders || 0) + 1
+                                  };
+                                  setUser(updatedUser);
+                                  localStorage.setItem('tsec_user', JSON.stringify(updatedUser));
                                 }
-                              }, 1200);
-                            }}
-                            className="flex flex-col gap-3.5 text-left animate-scale-in"
-                          >
-                            <div className="flex items-center gap-2 border-b border-[var(--border-color)] pb-2.5">
-                              <span className="text-xs">🔒</span>
-                              <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Secure Payment Gateway</span>
-                            </div>
 
+                                setPaymentStep(3); // Go to success step
+                                pushNotification("Payment Confirmed", `Homework matched and added to active orders tracker.`);
+                              }, 1000);
+                            }}
+                            className="flex flex-col gap-3.5"
+                          >
                             <div className="flex flex-col gap-1">
                               <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Cardholder Name</label>
                               <input 
                                 required 
                                 type="text" 
-                                placeholder="e.g. Aditya Hub" 
+                                placeholder="e.g. Anjali Mishra" 
                                 value={paymentName} 
                                 onChange={(e) => setPaymentName(e.target.value)} 
-                                className="p-2.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 font-semibold"
+                                className="p-3 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 font-semibold"
                               />
                             </div>
 
                             <div className="flex flex-col gap-1">
                               <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Card Number</label>
-                              <input 
-                                required 
-                                type="text" 
-                                placeholder="•••• •••• •••• ••••" 
-                                value={paymentCard} 
-                                onChange={(e) => {
-                                  const val = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-                                  const matches = val.match(/\d{4,16}/g);
-                                  const match = matches && matches[0] || '';
-                                  const parts = [];
-                                  for (let i = 0, len = match.length; i < len; i += 4) {
-                                    parts.push(match.substring(i, i + 4));
-                                  }
-                                  setPaymentCard(parts.length > 0 ? parts.join(' ') : val);
-                                }} 
-                                maxLength={19}
-                                className="p-2.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 font-medium font-mono"
-                              />
+                              <div className="relative flex items-center font-mono">
+                                <span className="absolute left-3 text-[var(--text-muted)]">
+                                  <Lock size={12} />
+                                </span>
+                                <input 
+                                  required 
+                                  type="text" 
+                                  placeholder="•••• •••• •••• ••••" 
+                                  value={paymentCard} 
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+                                    const matches = val.match(/\d{4,16}/g);
+                                    const match = matches && matches[0] || '';
+                                    const parts = [];
+                                    for (let i = 0, len = match.length; i < len; i += 4) {
+                                      parts.push(match.substring(i, i + 4));
+                                    }
+                                    setPaymentCard(parts.length > 0 ? parts.join(' ') : val);
+                                  }} 
+                                  maxLength={19}
+                                  className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 font-medium font-mono"
+                                />
+                              </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
                               <div className="flex flex-col gap-1">
-                                <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Expiry</label>
+                                <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">Expiry Date</label>
                                 <input 
                                   required 
                                   type="text" 
@@ -3487,8 +3059,9 @@ int main() {
                                   className="p-2.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] outline-none focus:border-blue-500 font-medium font-mono text-center"
                                 />
                               </div>
+
                               <div className="flex flex-col gap-1">
-                                <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">CVV</label>
+                                <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider font-mono">CVV Security</label>
                                 <input 
                                   required 
                                   type="password" 
@@ -3501,10 +3074,10 @@ int main() {
                               </div>
                             </div>
 
-                            <div className="flex flex-col gap-2 mt-2">
+                            <div className="mt-3 flex flex-col gap-2">
                               <button 
                                 type="submit" 
-                                className="w-full py-3 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5 font-heading"
+                                className="w-full py-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5"
                               >
                                 <Lock size={12} />
                                 <span>Pay ₹{(cartOrder.price * 1.025).toFixed(2)} Securely</span>
@@ -3512,24 +3085,41 @@ int main() {
                               <button 
                                 type="button" 
                                 onClick={() => setPaymentStep(1)}
-                                className="w-full py-2 border border-[var(--border-color)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-bold text-xs rounded-xl cursor-pointer transition-all text-center font-heading"
+                                className="w-full py-2.5 border border-[var(--border-color)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-bold text-xs rounded-xl cursor-pointer transition-all active:scale-95 text-center font-heading"
                               >
                                 Back to Cart
                               </button>
                             </div>
                           </form>
-                        )}
+                        </div>
+                      )}
 
-                        {/* Sub-step 3: Success Screen */}
-                        {paymentStep === 3 && (
-                          <div className="p-4 text-center max-w-sm mx-auto w-full animate-scale-in flex flex-col items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center text-xl shadow-inner animate-bounce">
-                              ✓
-                            </div>
-                            <h3 className="font-extrabold text-xs uppercase tracking-wider font-heading text-[var(--text-primary)]">Order Submitted Successfully!</h3>
-                            <p className="text-[11px] text-[var(--text-secondary)] font-semibold leading-normal max-w-[240px]">
-                              Loyalty coins credited! Your deadlines list has been updated. Match with top-tier writers finalized.
-                            </p>
+                      {/* Sub-step 3: Success Screen */}
+                      {paymentStep === 3 && (
+                        <div className="p-6 text-center max-w-md mx-auto w-full animate-scale-in relative overflow-hidden flex flex-col items-center">
+                          {/* Confetti Animation Background */}
+                          <div className="absolute inset-0 pointer-events-none">
+                            <div className="absolute top-10 left-10 w-2.5 h-2.5 bg-pink-500 rounded-full animate-confetti"></div>
+                            <div className="absolute top-20 right-10 w-3 h-3 bg-purple-500 rounded-full animate-confetti" style={{ animationDelay: '0.3s' }}></div>
+                            <div className="absolute top-5 left-1/2 w-2 h-2 bg-yellow-500 rounded-full animate-confetti" style={{ animationDelay: '0.6s' }}></div>
+                            <div className="absolute top-32 left-1/4 w-3 h-3 bg-blue-500 rounded-full animate-confetti" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="absolute top-24 right-1/4 w-2 h-2 bg-emerald-500 rounded-full animate-confetti" style={{ animationDelay: '0.8s' }}></div>
+                          </div>
+
+                          <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center text-2xl mb-4 shadow-inner animate-bounce">
+                            ✓
+                          </div>
+                          
+                          <h3 className="font-extrabold text-sm uppercase tracking-wider font-heading text-[var(--text-primary)]">Order Placed Successfully!</h3>
+                          <p className="text-[9.5px] text-[var(--text-muted)] font-bold font-mono mt-1 bg-slate-100 dark:bg-slate-900 px-3 py-1 rounded border border-[var(--border-color)]">
+                            ORDER ID: #TSEC-\8996
+                          </p>
+                          
+                          <p className="text-[11px] text-[var(--text-secondary)] font-semibold leading-relaxed mt-4 max-w-xs">
+                            Thank you! Your payment is authorized. Our expert writers have been assigned to your homework order. Loyalty coins have been credited to your account.
+                          </p>
+
+                          <div className="mt-6 flex flex-col gap-2 w-full">
                             <button 
                               type="button" 
                               onClick={() => {
@@ -3553,7 +3143,8 @@ int main() {
                               Create New Order
                             </button>
                           </div>
-                        )}
+                        </div>
+                      )}
 
                     </div>
                   </div>
@@ -3563,8 +3154,7 @@ int main() {
             </div>
 
           </div>
-        </div>
-      )}
+        )}
 
         {/* ── LEADERBOARD TAB ─────────────────────────────────────── */}
         {activeTab === 'leaderboard' && (
@@ -4335,6 +3925,7 @@ int main() {
                         ))}
                       </div>
                     </div>
+
                   </div>
                 )}
 
@@ -5146,24 +4737,6 @@ int main() {
             >
               Sign In Session
             </button>
-            <div className="flex items-center gap-2 my-1 text-slate-400 dark:text-slate-500 text-[10px] uppercase font-mono">
-              <hr className="flex-grow border-[var(--border-color)]" />
-              <span>Or</span>
-              <hr className="flex-grow border-[var(--border-color)]" />
-            </div>
-            <button 
-              type="button"
-              onClick={handleGoogleSignIn}
-              className="w-full py-2.5 bg-white dark:bg-slate-900 border border-[var(--border-color)] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] font-bold text-xs rounded-lg transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-            >
-              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                <path fill="#ea4335" d="M12 5.04c1.62 0 3.08.56 4.22 1.65l3.15-3.15C17.45 1.77 14.93 1 12 1 7.35 1 3.39 3.65 1.44 7.5l3.78 2.93c.89-2.67 3.39-4.39 6.78-4.39z"/>
-                <path fill="#4285f4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.47-1.11 2.72-2.36 3.56l3.66 2.84c2.14-1.97 3.38-4.88 3.38-8.5z"/>
-                <path fill="#fbbc05" d="M5.22 14.57c-.23-.69-.36-1.42-.36-2.18s.13-1.49.36-2.18L1.44 7.5C.52 9.35 0 11.42 0 13.62s.52 4.27 1.44 6.12l3.78-2.93z"/>
-                <path fill="#34a853" d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.66-2.84c-1.01.68-2.31 1.08-3.96 1.08-3.39 0-5.89-2.02-6.78-4.69L1.44 16.5c1.95 3.85 5.91 6.5 10.56 6.5z"/>
-              </svg>
-              <span>Continue with Google</span>
-            </button>
           </form>
         </div>
       )}
@@ -5213,24 +4786,6 @@ int main() {
               className="w-full py-3 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-lg shadow-md cursor-pointer transition-all active:scale-95 mt-2"
             >
               Register Account
-            </button>
-            <div className="flex items-center gap-2 my-1 text-slate-400 dark:text-slate-500 text-[10px] uppercase font-mono">
-              <hr className="flex-grow border-[var(--border-color)]" />
-              <span>Or</span>
-              <hr className="flex-grow border-[var(--border-color)]" />
-            </div>
-            <button 
-              type="button"
-              onClick={handleGoogleSignIn}
-              className="w-full py-2.5 bg-white dark:bg-slate-900 border border-[var(--border-color)] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] font-bold text-xs rounded-lg transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-            >
-              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                <path fill="#ea4335" d="M12 5.04c1.62 0 3.08.56 4.22 1.65l3.15-3.15C17.45 1.77 14.93 1 12 1 7.35 1 3.39 3.65 1.44 7.5l3.78 2.93c.89-2.67 3.39-4.39 6.78-4.39z"/>
-                <path fill="#4285f4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.47-1.11 2.72-2.36 3.56l3.66 2.84c2.14-1.97 3.38-4.88 3.38-8.5z"/>
-                <path fill="#fbbc05" d="M5.22 14.57c-.23-.69-.36-1.42-.36-2.18s.13-1.49.36-2.18L1.44 7.5C.52 9.35 0 11.42 0 13.62s.52 4.27 1.44 6.12l3.78-2.93z"/>
-                <path fill="#34a853" d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.66-2.84c-1.01.68-2.31 1.08-3.96 1.08-3.39 0-5.89-2.02-6.78-4.69L1.44 16.5c1.95 3.85 5.91 6.5 10.56 6.5z"/>
-              </svg>
-              <span>Continue with Google</span>
             </button>
           </form>
         </div>

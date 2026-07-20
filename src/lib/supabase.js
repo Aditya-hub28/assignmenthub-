@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   SUPABASE.JS — Real / Mock Database Layer
+   SUPABASE.JS — Unified Real & Mock Backend Layer
    ═══════════════════════════════════════════════════════════════ */
 
 import { createClient } from '@supabase/supabase-js';
@@ -13,7 +13,7 @@ export const supabase = isRealSupabase
   ? createClient(supabaseUrl, supabaseAnonKey) 
   : null;
 
-// Initial Seeds
+// Initial Seed Data for fallback
 const initialResources = [
   {
     id: 1,
@@ -79,62 +79,6 @@ const initialResources = [
       { author: "Amit M.", stars: 4, content: "Great lab manual, all queries executed perfectly in Oracle DB.", tags: ["Easy to understand"] }
     ],
     comments: []
-  },
-  {
-    id: 4,
-    title: "OS Assignment - CPU Scheduling",
-    subject: "Operating Systems",
-    sem: 4,
-    dept: "Computer Engineering",
-    teacher: "Prof. M. Shah",
-    type: "Assignments",
-    uploadedBy: "Amit M.",
-    date: "2026-06-05",
-    size: "950 KB",
-    downloads: 215,
-    rating: 4.6,
-    desc: "Detailed numerical questions and solutions on CPU Scheduling algorithms: FCFS, SJF, SRTF, Round Robin, and Priority Scheduling.",
-    tags: ["OS", "CPU Scheduling", "Semester 4"],
-    reviews: [],
-    comments: []
-  },
-  {
-    id: 5,
-    title: "Semester 4 PYQs - Math IV",
-    subject: "Applied Mathematics IV",
-    sem: 4,
-    dept: "Computer Engineering",
-    teacher: "N/A",
-    type: "Previous Year Papers",
-    uploadedBy: "Hrishikesh B.",
-    date: "2026-04-18",
-    size: "4.5 MB",
-    downloads: 512,
-    rating: 4.7,
-    desc: "Previous Year Question papers for Mumbai University Mathematics-IV exam from 2021 to 2025. Covers Laplace Transforms, Complex Variables, and Probability Matrices.",
-    tags: ["Maths", "PYQ", "University"],
-    reviews: [
-      { author: "Tanvi S.", stars: 5, content: "Superb collection. Clean PDFs.", tags: ["Helpful"] }
-    ],
-    comments: []
-  },
-  {
-    id: 6,
-    title: "Web Technology Lab - HTML/CSS/JS",
-    subject: "Web Development",
-    sem: 4,
-    dept: "Information Technology",
-    teacher: "Prof. K. Sen",
-    type: "Lab Files",
-    uploadedBy: "Rahul P.",
-    date: "2026-06-11",
-    size: "2.8 MB",
-    downloads: 98,
-    rating: 4.4,
-    desc: "Comprehensive lab experiments demonstrating dynamic DOM manipulation, form validation, AJAX requests, and clean flexbox layout styling.",
-    tags: ["Web Dev", "JS", "CSS"],
-    reviews: [],
-    comments: []
   }
 ];
 
@@ -156,10 +100,10 @@ const initialPending = [
 ];
 
 const initialDeadlines = [
-  { id: 1, title: "Java Threading Assignment 5", subject: "Java Programming", date: "2026-06-27" },
-  { id: 2, title: "DSA Graph Assignment", subject: "Data Structures & Algorithms", date: "2026-06-28" },
-  { id: 3, title: "DBMS SQL Experiment", subject: "Database Management Systems", date: "2026-06-30" },
-  { id: 4, title: "OS Scheduling Lab", subject: "Operating Systems", date: "2026-07-02" }
+  { id: "seed-1", name: "Java Threading Assignment 5", subject: "Java Programming", dueDate: "2026-06-27T10:00:00.000Z", status: "Active" },
+  { id: "seed-2", name: "DSA Graph Assignment", subject: "Data Structures & Algorithms", dueDate: "2026-06-28T12:00:00.000Z", status: "Active" },
+  { id: "seed-3", name: "DBMS SQL Experiment", subject: "Database Management Systems", dueDate: "2026-06-30T17:00:00.000Z", status: "Active" },
+  { id: "seed-4", name: "OS Scheduling Lab", subject: "Operating Systems", dueDate: "2026-07-02T14:30:00.000Z", status: "Active" }
 ];
 
 const initialContributors = [
@@ -168,39 +112,16 @@ const initialContributors = [
   { rank: 3, name: "Rohan K.", uploads: 78, downloads: 390, points: 780 },
   { rank: 4, name: "Snehal M.", uploads: 70, downloads: 310, points: 700 },
   { rank: 5, name: "Amit Shah", uploads: 65, downloads: 290, points: 650 },
-  { rank: 6, name: "Jayesh R.", uploads: 60, downloads: 270, points: 600 },
-  { rank: 7, name: "Tanvi S.", uploads: 55, downloads: 250, points: 550 },
-  { rank: 8, name: "Ravi M.", uploads: 50, downloads: 230, points: 500 },
-  { rank: 9, name: "Hrishikesh B.", uploads: 45, downloads: 210, points: 450 },
-  { rank: 10, name: "Pooja P.", uploads: 42, downloads: 190, points: 420 },
-  { rank: 11, name: "Ketan S.", uploads: 40, downloads: 180, points: 400 },
-  { rank: 12, name: "Siddhesh R.", uploads: 38, downloads: 170, points: 380 },
-  { rank: 13, name: "Nisha K.", uploads: 35, downloads: 160, points: 350 },
-  { rank: 14, name: "Jay R.", uploads: 32, downloads: 150, points: 320 },
-  { rank: 15, name: "Kunal M.", uploads: 30, downloads: 140, points: 300 },
-  { rank: 16, name: "Yash P.", uploads: 28, downloads: 130, points: 280 },
-  { rank: 17, name: "Rahul Sharma", uploads: 12, downloads: 40, points: 120 },
-  { rank: 18, name: "Neha G.", uploads: 10, downloads: 30, points: 100 },
-  { rank: 19, name: "Gaurav S.", uploads: 8, downloads: 20, points: 80 },
   { rank: 20, name: "Anjali Mishra", uploads: 0, downloads: 0, points: 0 }
 ];
 
-// Helper to load mock DB from localStorage safely on Client Side
+// Helper to load mock DB from localStorage
 function loadMockData(key, defaultData) {
   if (typeof window === "undefined") return defaultData;
   const stored = localStorage.getItem(`tsec_${key}`);
   if (stored) {
     try {
-      const parsed = JSON.parse(stored);
-      if (key === 'contributors') {
-        const idx = parsed.findIndex(c => c.name.toLowerCase() === 'anjali mishra');
-        if (idx !== -1 && parsed[idx].uploads !== 0) {
-          parsed[idx].uploads = 0;
-          parsed[idx].points = 0;
-          localStorage.setItem(`tsec_${key}`, JSON.stringify(parsed));
-        }
-      }
-      return parsed;
+      return JSON.parse(stored);
     } catch {
       return defaultData;
     }
@@ -214,37 +135,473 @@ function saveMockData(key, data) {
   localStorage.setItem(`tsec_${key}`, JSON.stringify(data));
 }
 
-// Unified client-side mock wrapper mimicking Supabase behavior
-export const dbMock = {
-  // Resources
-  getResources: async () => {
-    return loadMockData('resources', initialResources);
+function uniqueValues(values) {
+  return [...new Set(values.filter(value => value !== undefined && value !== null))];
+}
+
+async function syncTableRows(table, rows, keyColumn) {
+  if (!isRealSupabase || !supabase) {
+    return rows;
+  }
+
+  const normalizedRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+  const nextKeys = uniqueValues(normalizedRows.map(row => row[keyColumn]));
+
+  const { data: existingRows, error: fetchError } = await supabase
+    .from(table)
+    .select(keyColumn);
+  if (fetchError) throw fetchError;
+
+  const existingKeys = uniqueValues((existingRows || []).map(row => row[keyColumn]));
+  const removedKeys = existingKeys.filter(key => !nextKeys.includes(key));
+
+  if (removedKeys.length > 0) {
+    const { error: deleteError } = await supabase
+      .from(table)
+      .delete()
+      .in(keyColumn, removedKeys);
+    if (deleteError) throw deleteError;
+  }
+
+  if (normalizedRows.length > 0) {
+    const { error: upsertError } = await supabase
+      .from(table)
+      .upsert(normalizedRows, { onConflict: keyColumn });
+    if (upsertError) throw upsertError;
+  }
+
+  return normalizedRows;
+}
+
+// Unified Authenticator & Database functions
+export const backend = {
+  // Auth Operations
+  signUp: async (email, password, name, avatar = '⭐', location = 'India') => {
+    if (isRealSupabase) {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name, avatar, location }
+        }
+      });
+      if (error) throw error;
+      
+      // Seed a profile inside profiles table
+      const profileData = {
+        id: data.user.id,
+        name: name,
+        email: email,
+        role: 'client', // Default to student
+        avatar: avatar,
+        location: location,
+        coins: 120,
+        level: 1,
+        orders: 0,
+        rating: 5.0,
+        streak: 1,
+        rank: 500,
+        completed: 0,
+        delivered: 0,
+        onTime: 100
+      };
+      
+      const { error: profileError } = await supabase.from('profiles').insert([profileData]);
+      if (profileError) console.error("Error creating profile:", profileError);
+      
+      return { user: { ...data.user, ...profileData } };
+    } else {
+      // Mock signup
+      const users = loadMockData('mock_users', []);
+      const match = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+      if (match) throw new Error("Email already registered.");
+      
+      const isWriter = email.includes('writer') || email === 'anjali@gmail.com';
+      const role = isWriter ? 'writer' : 'client';
+      const newUser = {
+        name: name.toUpperCase(),
+        email: email.toLowerCase(),
+        role: role,
+        avatar: avatar,
+        location: location,
+        coins: role === 'writer' ? 2450 : 120,
+        level: role === 'writer' ? 18 : 1,
+        orders: role === 'writer' ? 56 : 0,
+        rating: role === 'writer' ? 4.9 : 5.0,
+        streak: role === 'writer' ? 15 : 1,
+        rank: role === 'writer' ? 18 : 500,
+        completed: role === 'writer' ? 124 : 0,
+        delivered: role === 'writer' ? 98 : 0,
+        onTime: role === 'writer' ? 97 : 100
+      };
+      
+      users.push({ ...newUser, password });
+      saveMockData('mock_users', users);
+      return { user: newUser };
+    }
   },
+
+  signIn: async (email, password) => {
+    if (isRealSupabase) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+      
+      if (profileError) throw profileError;
+      return { user: profile };
+    } else {
+      // Mock login
+      const users = loadMockData('mock_users', []);
+      const match = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+      if (!match) {
+        // Fallback for default seed accounts (e.g. aditya@gmail.com or anjali@gmail.com) if not explicitly registered
+        const isWriter = email.includes('writer') || email === 'anjali@gmail.com';
+        const role = isWriter ? 'writer' : 'client';
+        const defaultUser = {
+          name: isWriter ? 'Anjali Mishra' : 'Rahul Sharma',
+          email: email.toLowerCase(),
+          role: role,
+          avatar: '⭐',
+          location: 'India',
+          coins: role === 'writer' ? 2450 : 120,
+          level: role === 'writer' ? 18 : 3,
+          orders: role === 'writer' ? 56 : 5,
+          rating: role === 'writer' ? 4.9 : 4.5,
+          streak: role === 'writer' ? 15 : 4,
+          rank: role === 'writer' ? 18 : 142,
+          completed: role === 'writer' ? 124 : 8,
+          delivered: role === 'writer' ? 98 : 0,
+          onTime: role === 'writer' ? 97 : 100
+        };
+        return { user: defaultUser };
+      }
+      return { user: match };
+    }
+  },
+
+  signInWithGoogle: async () => {
+    if (isRealSupabase) {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: typeof window !== "undefined" ? window.location.origin : undefined
+        }
+      });
+      if (error) throw error;
+      return { user: null };
+    } else {
+      // Mock Google Login
+      const defaultGoogleUser = {
+        name: "GOOGLE STUDENT",
+        email: "google.student@tsec.edu",
+        role: "client",
+        avatar: "⭐",
+        location: "India",
+        coins: 120,
+        level: 1,
+        orders: 0,
+        rating: 5.0,
+        streak: 1,
+        rank: 500,
+        completed: 0,
+        delivered: 0,
+        onTime: 100
+      };
+      return { user: defaultGoogleUser };
+    }
+  },
+
+  getProfile: async (userId) => {
+    if (isRealSupabase) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    }
+    return null;
+  },
+
+  updateProfile: async (userId, updates) => {
+    if (isRealSupabase) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
+    return updates;
+  },
+
+  signOut: async () => {
+    if (isRealSupabase) {
+      await supabase.auth.signOut();
+    }
+  },
+
+  // Resources DB operations
+  getResources: async () => {
+    if (isRealSupabase) {
+      const { data, error } = await supabase.from('resources').select('*');
+      if (error) throw error;
+      return data;
+    } else {
+      return loadMockData('resources', initialResources);
+    }
+  },
+
+  getPending: async () => {
+    if (isRealSupabase) {
+      const { data, error } = await supabase.from('pending_resources').select('*');
+      if (error) throw error;
+      return data;
+    } else {
+      return loadMockData('pending', initialPending);
+    }
+  },
+
+  uploadResource: async (resource) => {
+    if (isRealSupabase) {
+      const { data, error } = await supabase.from('resources').insert([resource]).select();
+      if (error) throw error;
+      return data[0];
+    } else {
+      const resources = loadMockData('resources', initialResources);
+      const newResource = { id: Date.now(), ...resource };
+      resources.push(newResource);
+      saveMockData('resources', resources);
+      return newResource;
+    }
+  },
+
+  addReview: async (resourceId, review) => {
+    if (isRealSupabase) {
+      // First get current reviews
+      const { data: resource, error: getError } = await supabase
+        .from('resources')
+        .select('reviews')
+        .eq('id', resourceId)
+        .single();
+      if (getError) throw getError;
+      
+      const currentReviews = resource.reviews || [];
+      const updatedReviews = [review, ...currentReviews];
+      const totalStars = updatedReviews.reduce((sum, entry) => sum + entry.stars, 0);
+      const rating = parseFloat((totalStars / updatedReviews.length).toFixed(1));
+      
+      const { data, error } = await supabase
+        .from('resources')
+        .update({ reviews: updatedReviews, rating })
+        .eq('id', resourceId)
+        .select();
+      if (error) throw error;
+      return data[0];
+    } else {
+      const resources = loadMockData('resources', initialResources);
+      const idx = resources.findIndex(r => r.id === resourceId);
+      if (idx !== -1) {
+        resources[idx].reviews = [review, ...(resources[idx].reviews || [])];
+        const totalStars = resources[idx].reviews.reduce((sum, entry) => sum + entry.stars, 0);
+        resources[idx].rating = parseFloat((totalStars / resources[idx].reviews.length).toFixed(1));
+        saveMockData('resources', resources);
+      }
+      return resources[idx];
+    }
+  },
+
+  addComment: async (resourceId, comment) => {
+    if (isRealSupabase) {
+      const { data: resource, error: getError } = await supabase
+        .from('resources')
+        .select('comments')
+        .eq('id', resourceId)
+        .single();
+      if (getError) throw getError;
+      
+      const currentComments = resource.comments || [];
+      const updatedComments = [...currentComments, comment];
+      
+      const { data, error } = await supabase
+        .from('resources')
+        .update({ comments: updatedComments })
+        .eq('id', resourceId)
+        .select();
+      if (error) throw error;
+      return data[0];
+    } else {
+      const resources = loadMockData('resources', initialResources);
+      const idx = resources.findIndex(r => r.id === resourceId);
+      if (idx !== -1) {
+        resources[idx].comments = [...(resources[idx].comments || []), comment];
+        saveMockData('resources', resources);
+      }
+      return resources[idx];
+    }
+  },
+
+  // Deadlines DB operations
+  getDeadlines: async (userId) => {
+    if (isRealSupabase) {
+      if (!userId || userId === 'anonymous') {
+        return [];
+      }
+      const { data, error } = await supabase
+        .from('deadlines')
+        .select('*')
+        .eq('userId', userId);
+      if (error) throw error;
+      return data;
+    } else {
+      return loadMockData('deadlines', initialDeadlines);
+    }
+  },
+
+  addDeadline: async (deadline) => {
+    if (isRealSupabase) {
+      const { data, error } = await supabase.from('deadlines').insert([deadline]).select();
+      if (error) throw error;
+      return data[0];
+    } else {
+      const deadlines = loadMockData('deadlines', initialDeadlines);
+      const newDeadline = { id: Date.now().toString(), ...deadline };
+      deadlines.push(newDeadline);
+      saveMockData('deadlines', deadlines);
+      return newDeadline;
+    }
+  },
+
+  toggleDeadlineStatus: async (deadlineId, status) => {
+    if (isRealSupabase) {
+      const { data, error } = await supabase
+        .from('deadlines')
+        .update({ status: status })
+        .eq('id', deadlineId)
+        .select();
+      if (error) throw error;
+      return data[0];
+    } else {
+      const deadlines = loadMockData('deadlines', initialDeadlines);
+      const idx = deadlines.findIndex(d => d.id === deadlineId);
+      if (idx !== -1) {
+        deadlines[idx].status = status;
+        saveMockData('deadlines', deadlines);
+      }
+      return deadlines[idx];
+    }
+  },
+
+  deleteDeadline: async (deadlineId) => {
+    if (isRealSupabase) {
+      const { error } = await supabase
+        .from('deadlines')
+        .delete()
+        .eq('id', deadlineId);
+      if (error) throw error;
+    } else {
+      const deadlines = loadMockData('deadlines', initialDeadlines);
+      const updated = deadlines.filter(d => d.id !== deadlineId);
+      saveMockData('deadlines', updated);
+    }
+  },
+
+  // Orders
+  getOrders: async (userId) => {
+    if (isRealSupabase) {
+      if (!userId || userId === 'anonymous') {
+        return [];
+      }
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('userId', userId);
+      if (error) throw error;
+      return data;
+    } else {
+      return loadMockData('active_orders', []);
+    }
+  },
+
+  addOrder: async (order) => {
+    if (isRealSupabase) {
+      const { data, error } = await supabase.from('orders').insert([order]).select();
+      if (error) throw error;
+      return data[0];
+    } else {
+      const orders = loadMockData('active_orders', []);
+      orders.push(order);
+      saveMockData('active_orders', orders);
+      return order;
+    }
+  },
+
+  // Contributors DB operations
+  getContributors: async () => {
+    if (isRealSupabase) {
+      const { data, error } = await supabase
+        .from('contributors')
+        .select('*')
+        .order('points', { ascending: false });
+      if (error) throw error;
+      return data;
+    } else {
+      return loadMockData('contributors', initialContributors);
+    }
+  },
+
+  updateContributorPoints: async (name, points, uploads) => {
+    if (isRealSupabase) {
+      const { data, error } = await supabase
+        .from('contributors')
+        .update({ points, uploads })
+        .eq('name', name)
+        .select();
+      if (error) throw error;
+      return data[0];
+    } else {
+      const contributors = loadMockData('contributors', initialContributors);
+      const idx = contributors.findIndex(c => c.name.toLowerCase() === name.toLowerCase());
+      if (idx !== -1) {
+        contributors[idx].points = points;
+        contributors[idx].uploads = uploads;
+        saveMockData('contributors', contributors);
+      }
+      return contributors[idx];
+    }
+  },
+
+  // Backwards compatibility legacy save wrappers
   saveResources: async (data) => {
+    if (isRealSupabase) {
+      return syncTableRows('resources', data, 'id');
+    }
     saveMockData('resources', data);
   },
-
-  // Pending Queue
-  getPending: async () => {
-    return loadMockData('pending', initialPending);
-  },
   savePending: async (data) => {
+    if (isRealSupabase) {
+      return syncTableRows('pending_resources', data, 'id');
+    }
     saveMockData('pending', data);
   },
-
-  // Deadlines
-  getDeadlines: async () => {
-    return loadMockData('deadlines', initialDeadlines);
-  },
   saveDeadlines: async (data) => {
+    if (isRealSupabase) {
+      return syncTableRows('deadlines', data, 'id');
+    }
     saveMockData('deadlines', data);
   },
-
-  // Contributors
-  getContributors: async () => {
-    return loadMockData('contributors', initialContributors);
-  },
   saveContributors: async (data) => {
+    if (isRealSupabase) {
+      return syncTableRows('contributors', data, 'name');
+    }
     saveMockData('contributors', data);
   }
 };
